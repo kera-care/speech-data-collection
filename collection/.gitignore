@@ -135,3 +135,4 @@ dist
 # Private JSON files
 assets/vars.private.json
 assets/service_account_key.private.json
+assets/firebase_config.private.json

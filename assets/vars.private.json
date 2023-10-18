@@ -1,0 +1,19 @@
+{
+    "participant-sheet": "1W4syU9xaurHHB0wsIWvSQruSEna37jWiWji44CDbfOc",
+    "response-sheet": "1IDH_XAR9XJOKBFqxDPRyqXq3CtLQrfhiQw-1L5Zkh-U",
+    "prompt-sheet": "1t7ByqpduroU3Dh93zIQnocwxttAZMBS4l93rY6JmUDE",
+    "transcription-sheet": "1aNtRQxwr3JR69r4iQETLnwCOrBvzi-_5RKpvQUQMDXE",
+    "whatsapp-number": "+14155238886",
+    "storage-bucket": "test-waxal-bucket",
+    "min-audio-length-secs": "3",
+    "transcriptions-per-response": "2",
+    "speech-language": "wolof",
+    "transcription-language": "english",
+    "transcription-instructions": "Please listen to the following audio and respond with an exact English transcription (text). If you have already responded to an audio file, please copy and re-send the same audio",
+    "not-registered-audio": "https://drive.google.com/uc?export=download&id=12SA9BRTaxGmAtmTkAnWfswSVnUc81Wp5",
+    "voice-note-required-audio": "https://drive.google.com/uc?export=download&id=1sfGSvMEz1LfbMj4Us5NnuRFl0qKbv5EP",
+    "voice-note-too-short-audio": "https://drive.google.com/uc?export=download&id=1CEA-PSp0I8qQltwwwmoM8J19K14Nn4EJ",
+    "survey-completed-audio": "https://drive.google.com/uc?export=download&id=1QMziHm2ZZyO3eVfMULRPAcPJC7WNKivF",
+    "consent-audio": "https://drive.google.com/uc?export=download&id=1egcDHMk0NFJj96dveqK-29Yu9J9hGqdd",
+    "error-message-audio": "https://drive.google.com/uc?export=download&id=1_1TQ7GdjZsWPr-cSsKM4EO6Cy92xqrIX"
+  }
