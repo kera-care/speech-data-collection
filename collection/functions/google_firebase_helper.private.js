@@ -1,10 +1,20 @@
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldPath, FieldValue, Filter } = require("firebase-admin/firestore");
+const { getStorage } = require("firebase-admin/storage")
 
+// Your web app's Firebase configuration //! this is temporary, will then be edited out
+const firebaseConfig = {
+  apiKey: "AIzaSyBxY9M0NJT0o1UOWMaGWDkG-tV3WjLLytg",
+  authDomain: "waxal-kera.firebaseapp.com",
+  projectId: "waxal-kera",
+  storageBucket: "waxal-kera.appspot.com",
+  messagingSenderId: "58578486226",
+  appId: "1:58578486226:web:cc5b5524ff63433631fe0b"
+};
 
 const app = initializeApp(FIREBASE_CONFIG);
 const db = getFirestore(app);
-
+const storage = getStorage(app)
 
 
 exports.getParticipantsCollectionRef = async () => {
