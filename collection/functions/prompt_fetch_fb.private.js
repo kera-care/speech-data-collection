@@ -29,7 +29,7 @@ exports.getNextPrompt = async (usedPrompts) => {
           position: usedPrompts.size + 1,
         };
       } else {
-        throw "All available prompts have been seen by this user. Please add more to continue";
+        throw new Error("All available prompts have been seen by this user. Please add more to continue");
       }
     })
     .catch((error) => {
