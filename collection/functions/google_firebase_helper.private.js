@@ -100,16 +100,21 @@ exports.addParticipantResponse = async (participantRef, promptId, dlLink, durati
   const promptCol = await getPromptsCollectionRef();
   const language = varsHelper.getVar("speech-language");
 
-  responsesCol.add({
-    storage_link: dlLink,
-    duration: duration,
-    language: language,
-    participant_path: participantRef.path,
-    prompt_path: promptCol.doc(promptId).path,
-    response_date: new Date().toISOString(),
-    transcription_counts: {
-      [language]: 1,
-    },
-    status: "New",
-  }).then()
+  responsesCol
+    .add({
+      storage_link: dlLink,
+      duration: duration,
+      language: language,
+      participant_path: participantRef.path,
+      prompt_path: promptCol.doc(promptId).path,
+      response_date: new Date().toISOString(),
+      transcription_counts: {
+        [`${language}`]: 1,
+      },
+      status: "New",
+    })
+    .then()
+    .catch((error) => {
+      console.error("Error adding response:", error);
+    });
 };
