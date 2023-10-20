@@ -42,7 +42,7 @@ exports.uploadVoice = async (context, promptId, mediaUrl, participantRef, partic
     const uploadedFile = await uploadToDirectory(promptId, participantRef.id, mediaUrl, bucket);
     const dlLink = await uploadedFile.getSignedUrl({
       action: "read",
-      expires: "2099-01-01", // Set an expiration date or use a time suitable for your use case
+      expires: "2099-01-01", 
     });
 
     // Update Response and Participant spreadsheets.
@@ -63,7 +63,7 @@ async function uploadToDirectory(promptId, participantId, mediaUrl, bucket) {
   console.log("Uploading response audio");
   const fullPath = path.resolve(`${PUBLIC_DIR}/${participantId}`);
   const fileStream = fs.createWriteStream(fullPath);
-  const destinationPath = promptId + "/" + participantId + ".ogg";
+  const destinationPath = "responses/" + promptId + "/" + participantId + ".ogg";
   // First write to a local file.
   const response = await fetch(mediaUrl);
   response.body.pipe(fileStream);
