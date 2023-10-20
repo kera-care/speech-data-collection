@@ -20,7 +20,7 @@ exports.addTranscription = async (participantRef, participantData, responseId, t
   console.log("Adding transcription document to database");
   transcriptionsCol
     .add({
-      creation_date: new Date().toUTCString(),
+      creation_date: new Date().toISOString(),
       transcriber_path: participantRef.path,
       target_language: language,
       text: text,
