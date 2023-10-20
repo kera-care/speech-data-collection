@@ -1,11 +1,12 @@
 //? improve the vars file with the column names ? so that it's easier to maintain code, and it's default
+//* uploaded files are downloadable till 2099
 //TODO: adapt file documentation
-//TODO: Don't forget to add the prompt/response IDs to the corresponding arrays in the participant doc when used
 //TODO: check all missing async/await
 const { FieldValue } = require("firebase-admin/firestore");
 const promptHelper = require(Runtime.getFunctions()["messaging/send_prompt"].path);
 const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
-const transcriptionHelper = require(Runtime.getFunctions()["transcription"].path);
+const transcriptionHelper = require(Runtime.getFunctions()["transcription_fb"].path);
+const firebaseHelper = require(Runtime.getFunctions()["google_firebase_helper"].path);
 
 /**
  * Main entrypoint for Waxal workflow.
@@ -15,11 +16,9 @@ const transcriptionHelper = require(Runtime.getFunctions()["transcription"].path
  */
 exports.handler = async (context, event, callback) => {
   // Strip non-numeric characters from phone number.
-  let participantPhone = event["From"].replace(/^\D+/g, "");
+  const participantPhone = event["From"].replace(/^\D+/g, "");
   try {
-    let path = Runtime.getFunctions()["google_firebase_helper"].path;
-    let helper = require(path);
-    const participantRef = await helper.getParticipantDocRef(participantPhone, true);
+    const participantRef = await firebaseHelper.getParticipantDocRef(participantPhone, true);
 
     participantRef
       .get()
@@ -29,12 +28,12 @@ exports.handler = async (context, event, callback) => {
           let audio = varsHelper.getVar("not-registered-audio");
           await promptHelper.sendPrompt(context, participantPhone, audio, false);
         } else {
-          let participantData = participantSnapshot.data();
+          const participantData = participantSnapshot.data();
           console.log(`Participant status is ${participantData["status"]}`);
 
           if (participantData["status"] === "Consented") {
             // Send consent audio for first timers.
-            console.log(`Sending consent message for participantData type: ${participantData["Type"]}`);
+            console.log(`Sending consent message for participantData type: ${participantData["type"]}`);
             if (participantData["type"] === "Transcriber") {
               let text = varsHelper.getVar("transcription-instructions");
               await promptHelper.sendPrompt(context, participantPhone, text, true);
@@ -47,7 +46,7 @@ exports.handler = async (context, event, callback) => {
           if (participantData["status"] === "Prompted") {
             console.log("Processing prompt response");
             // Expect a response for prompted users.
-            await handlePromptResponse(context, event["Body"], event["MediaUrl0"], participantRef, participantData); 
+            await handlePromptResponse(context, event["Body"], event["MediaUrl0"], participantRef, participantData);
           } else if (participantData["status"] === "Ready" || participantData["status"] === "Consented") {
             // Send the first image for consented and ready users.
             console.log("Sending next prompt");
@@ -59,7 +58,7 @@ exports.handler = async (context, event, callback) => {
           if (participantData["status"] === "Completed") {
             console.log("Sending closing message");
             // Send the closing message for completed users.
-            let surveyCompletedAudio = varsHelper.getVar("survey-completed-audio");
+            const surveyCompletedAudio = varsHelper.getVar("survey-completed-audio");
             await promptHelper.sendPrompt(context, participantPhone, surveyCompletedAudio, false);
           }
 
@@ -68,16 +67,16 @@ exports.handler = async (context, event, callback) => {
         }
       })
       .catch(async (e) => {
-        console.log(e);
         console.log("----------------\n Error while fetching the document, not related to the doc existence)");
+        console.log(e);
         await promptHelper.sendPrompt(context, participantPhone, varsHelper.getVar("error-message-audio"), false);
       });
   } catch (initError) {
-    console.log(initError);
     console.log("----------------\nThis is probably an error with the helper functions declaration");
+    console.log(initError);
     await promptHelper.sendPrompt(context, participantPhone, varsHelper.getVar("error-message-audio"), false);
   }
-
+  await firebaseHelper.updateParticipantAfterResponse(participantRef, participantData);
   return callback(null, event); //? return or not return ?
 };
 
@@ -91,17 +90,17 @@ exports.handler = async (context, event, callback) => {
  * @returns
  */
 async function handlePromptResponse(context, body, mediaUrl, participantRef, participantData) {
-  let lastPromptId = participantData["used_prompts"][participantData["used_prompts"].length - 1];
+  const lastPromptId = participantData["used_prompts"][participantData["used_prompts"].length - 1];
 
   if (participantData["type"] === "Transcriber") {
     // Notify the user if they send a message that doesn't contain text.
     if (!body) {
-      let msg = varsHelper.getVar("transcription-instructions");
+      const msg = varsHelper.getVar("transcription-instructions");
       console.log("User did not include transcription text");
       await promptHelper.sendPrompt(context, participantData["phone"], msg, true);
       return;
     }
-    await transcriptionHelper.addTranscription(participantRef, participantData, lastPromptId, body); 
+    await transcriptionHelper.addTranscription(participantRef, participantData, lastPromptId, body);
   } else {
     // Notify the user if they send a message that doesn't contain audio.
     if (!mediaUrl) {
@@ -110,9 +109,8 @@ async function handlePromptResponse(context, body, mediaUrl, participantRef, par
       await promptHelper.sendPrompt(context, participantData["phone"], audio, false);
       return;
     }
-    let uploadPath = Runtime.getFunctions()["upload_voice"].path;
-    let uploadHelper = require(uploadPath);
-    await uploadHelper.uploadVoice(context, lastPromptId, mediaUrl, participantData); //! Come back when dealing with storage
+    const uploadHelper = require(Runtime.getFunctions()["upload_voice_fb"].path);
+    await uploadHelper.uploadVoice(context, lastPromptId, mediaUrl, participantRef, participantData);
   }
 
   // Mark completed if this response is the final one, else mark ready.
@@ -131,10 +129,6 @@ async function handlePromptResponse(context, body, mediaUrl, participantRef, par
   }
 }
 
-function updateParticipantAfterResponse(participantData) {
-  return;
-}
-
 /**
  * Handles the case where the user is ready for the next prompt.
  * @param {object} context contains Twilio client context.
@@ -145,22 +139,22 @@ async function handleSendPrompt(context, participantData) {
 
   const isTranscription = participantData["type"] === "Transcriber";
 
-  let fetchedPrompt = isTranscription
+  const fetchedPrompt = isTranscription
     ? await transcriptionHelper.getNextPrompt(participantData["transcribed_responses"], participantData["language"])
     : await promptFetchHelper.getNextPrompt(participantData["used_prompts"]);
 
-  let positionString = `${fetchedPrompt["position"]}/${participantData["number_questions"]}`;
+  const positionString = `${fetchedPrompt["position"]}/${participantData["number_questions"]}`;
 
   console.log(`Sending ${fetchedPrompt["type"]} prompt ${fetchedPrompt["content"]}`);
   await promptHelper.sendPrompt(context, participantData["phone"], positionString, true);
   await promptHelper.sendPrompt(
     context,
     participantData["phone"],
-    fetchedPrompt["content"],
+    fetchedPrompt["content"], //media URL or text
     fetchedPrompt["type"] === "Text"
   );
 
-  let usedIDsArrayName = isTranscription ? "transcribed_responses" : "used_prompts";
+  const usedIDsArrayName = isTranscription ? "transcribed_responses" : "used_prompts";
   participantData[usedIDsArrayName].push(fetchedPrompt["id"]);
   participantData["status"] = "Prompted";
 
