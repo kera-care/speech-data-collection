@@ -162,8 +162,6 @@ describe("Startup tests", () => {
         const key = getServiceAccountKey();
         assert(permissionResponse[0]["storage.objects.create"], `Please make sure storage bucket ${vars["storage-bucket"]} is write-able by robot account ${key["client_email"]}`);
     }).timeout(150000);
-<<<<<<< HEAD
-=======
 
     it("Storage bucket read-able by robot", async () => {
         const vars = extractVars();
@@ -175,5 +173,4 @@ describe("Startup tests", () => {
         const key = getServiceAccountKey();
         assert(permissionResponse[0]["storage.objects.get"], `Please make sure storage bucket ${vars["storage-bucket"]} is read-able by robot account ${key["client_email"]}`);
     }).timeout(150000);
->>>>>>> c7eded01 (Messed up previous repo quite badly, started a new clean repo, nothing was lost I think)
 });

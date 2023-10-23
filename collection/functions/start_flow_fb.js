@@ -15,69 +15,64 @@ const firebaseHelper = require(Runtime.getFunctions()["google_firebase_helper"].
  * @param callback event callback handler.
  */
 exports.handler = async (context, event, callback) => {
-  // Strip non-numeric characters from phone number.
+  // Strip non-numeric characters from the phone number.
   const participantPhone = event["From"].replace(/^\D+/g, "");
+
   try {
     const participantRef = await firebaseHelper.getParticipantDocRef(participantPhone, true);
+    const participantSnapshot = await participantRef.get();
 
-    participantRef
-      .get()
-      .then(async (participantSnapshot) => {
-        if (!participantSnapshot.exists) {
-          console.log("Participant not registered");
-          let audio = varsHelper.getVar("not-registered-audio");
-          await promptHelper.sendPrompt(context, participantPhone, audio, false);
+    if (!participantSnapshot.exists) {
+      console.log("Participant not registered");
+      let audio = varsHelper.getVar("not-registered-audio");
+      await promptHelper.sendPrompt(context, participantPhone, audio, false);
+    } else {
+      const participantData = participantSnapshot.data();
+      console.log(`Participant status is ${participantData["status"]}`);
+      console.log(3);
+
+      if (participantData["status"] === "Consented") {
+        // Send consent audio for first timers.
+        console.log(`Sending consent message for participantData type: ${participantData["type"]}`);
+        if (participantData["type"] === "Transcriber") {
+          let text = varsHelper.getVar("transcription-instructions");
+          await promptHelper.sendPrompt(context, participantPhone, text, true);
         } else {
-          const participantData = participantSnapshot.data();
-          console.log(`Participant status is ${participantData["status"]}`);
-
-          if (participantData["status"] === "Consented") {
-            // Send consent audio for first timers.
-            console.log(`Sending consent message for participantData type: ${participantData["type"]}`);
-            if (participantData["type"] === "Transcriber") {
-              let text = varsHelper.getVar("transcription-instructions");
-              await promptHelper.sendPrompt(context, participantPhone, text, true);
-            } else {
-              let audio = varsHelper.getVar("consent-audio");
-              await promptHelper.sendPrompt(context, participantPhone, audio, false);
-            }
-          }
-
-          if (participantData["status"] === "Prompted") {
-            console.log("Processing prompt response");
-            // Expect a response for prompted users.
-            await handlePromptResponse(context, event["Body"], event["MediaUrl0"], participantRef, participantData);
-          } else if (participantData["status"] === "Ready" || participantData["status"] === "Consented") {
-            // Send the first image for consented and ready users.
-            console.log("Sending next prompt");
-            await handleSendPrompt(context, participantData);
-          }
-
-          // If status is completed, send the completion audio.
-          // This can either be the state at entry or after {@link handlePromptResponse}.
-          if (participantData["status"] === "Completed") {
-            console.log("Sending closing message");
-            // Send the closing message for completed users.
-            const surveyCompletedAudio = varsHelper.getVar("survey-completed-audio");
-            await promptHelper.sendPrompt(context, participantPhone, surveyCompletedAudio, false);
-          }
-
-          console.log("Saving changes to the participant document in the firestore.");
-          participantRef.update(participantData);
+          let audio = varsHelper.getVar("consent-audio");
+          await promptHelper.sendPrompt(context, participantPhone, audio, false);
         }
-      })
-      .catch(async (e) => {
-        console.log("----------------\n Error while fetching the document, not related to the doc existence)");
-        console.log(e);
-        await promptHelper.sendPrompt(context, participantPhone, varsHelper.getVar("error-message-audio"), false);
-      });
-  } catch (initError) {
-    console.log("----------------\nThis is probably an error with the helper functions declaration");
-    console.log(initError);
+      }
+
+      if (participantData["status"] === "Prompted") {
+        console.log("Processing prompt response");
+        // Expect a response for prompted users.
+        await handlePromptResponse(context, event["Body"], event["MediaUrl0"], participantRef, participantData);
+      } else if (participantData["status"] === "Ready" || participantData["status"] === "Consented") {
+        // Send the first image for consented and ready users.
+        console.log("Sending the next prompt");
+        await handleSendPrompt(context, participantData);
+      }
+
+      // If the status is completed, send the completion audio.
+      // This can either be the state at entry or after {@link handlePromptResponse}.
+      if (participantData["status"] === "Completed") {
+        console.log("Sending the closing message");
+        // Send the closing message for completed users.
+        const surveyCompletedAudio = varsHelper.getVar("survey-completed-audio");
+        await promptHelper.sendPrompt(context, participantPhone, surveyCompletedAudio, false);
+      }
+
+      console.log("Saving changes to the participant document in the firestore.");
+      await participantRef.update(participantData);
+      console.log("Successfully updated participant data in firestore");
+    }
+  } catch (e) {
+    console.log(e);
+    // Handle the error as needed.
     await promptHelper.sendPrompt(context, participantPhone, varsHelper.getVar("error-message-audio"), false);
   }
-  await firebaseHelper.updateParticipantAfterResponse(participantRef, participantData);
-  return callback(null, event); //? return or not return ?
+  console.log("the end");
+  return callback(null, event); //? return or not return?
 };
 
 /**
@@ -116,9 +111,9 @@ async function handlePromptResponse(context, body, mediaUrl, participantRef, par
   // Mark completed if this response is the final one, else mark ready.
   participantData["answered"] += 1;
   participantData["status"] =
-    participantData["answered"] + 1 >= participantData["number_questions"] ? "Completed" : "Ready";
+    (participantData["answered"] + 1 >= participantData["number_questions"]) ? "Completed" : "Ready";
 
-  console.log(`Set participant status to ${participantData["status"]}`);
+  console.log(`Next participant status is : ${participantData["status"]}`);
 
   if (participantData["status"] !== "Completed") {
     // Send next prompt.
@@ -135,8 +130,8 @@ async function handlePromptResponse(context, body, mediaUrl, participantRef, par
  * @param {object} participantData the current participant data.
  */
 async function handleSendPrompt(context, participantData) {
-  const promptFetchHelper = require(Runtime.getFunctions()["prompt_fetch_firestore"].path);
-
+  const promptFetchHelper = require(Runtime.getFunctions()["prompt_fetch_fb"].path);
+  console.log(4);
   const isTranscription = participantData["type"] === "Transcriber";
 
   const fetchedPrompt = isTranscription

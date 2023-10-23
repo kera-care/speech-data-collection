@@ -1,4 +1,4 @@
-const {backOff} = require("exponential-backoff");
+const { backOff } = require("exponential-backoff");
 
 /**
  * Sends a whatsapp message.
@@ -9,21 +9,27 @@ const {backOff} = require("exponential-backoff");
  * @return {Promise<void>}
  */
 exports.sendPrompt = async (context, recipient, content, isText) => {
-  let varsPath = Runtime.getFunctions()['vars_helper'].path;
-  let varsHelper = require(varsPath);
-  let whatsappNumber = varsHelper.getVar("whatsapp-number");
+  try {
+    let varsPath = Runtime.getFunctions()["vars_helper"].path;
+    let varsHelper = require(varsPath);
+    let whatsappNumber = varsHelper.getVar("whatsapp-number");
 
-  let body = isText ? content : "";
-  let mediaUrl = isText ? "" : content;
+    let body = isText ? content : "";
+    let mediaUrl = isText ? undefined : content;
 
-  let request = {
-    to: recipient.startsWith('whatsapp') ? recipient
+    let request = {
+      to: recipient.startsWith("whatsapp")
+        ? recipient
         : `whatsapp:${recipient.startsWith("+") ? recipient : "+" + recipient}`,
-    from: `whatsapp:${whatsappNumber}`,
-    body: body,
-    mediaUrl: mediaUrl,
-  };
-  console.log(`Sending whatsapp request: ${JSON.stringify(request)}`);
-  await backOff(() => context.getTwilioClient().messages.create(request));
-  console.log(`Done sending whatsapp request: ${JSON.stringify(request)}`);
-}
+      from: `whatsapp:${whatsappNumber}`,
+      body: body,
+      mediaUrl: mediaUrl,
+    };
+    console.log(`Sending whatsapp request: ${JSON.stringify(request)}`);
+    await backOff(() => context.getTwilioClient().messages.create(request));
+    console.log(`Done sending whatsapp request: ${JSON.stringify(request)}`);
+  } catch (e) {
+    console.log(e);
+    throw e;
+  }
+};

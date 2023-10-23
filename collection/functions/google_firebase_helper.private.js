@@ -1,18 +1,21 @@
+const { credential } = require("firebase-admin");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldPath, FieldValue, Filter } = require("firebase-admin/firestore");
 const { getStorage } = require("firebase-admin/storage");
+const serviceAccount = require("../assets/service_account_key.private.json");
 //+ check how to use dotenv
 // Your web app's Firebase configuration //! this is temporary, will then be edited out
-const FIREBASE_CONFIG = {
+
+const app = initializeApp({
+  credential: credential.cert(serviceAccount),
+  //databaseURL: "waxal-kera.firebaseapp.com",
   apiKey: "AIzaSyBxY9M0NJT0o1UOWMaGWDkG-tV3WjLLytg",
   authDomain: "waxal-kera.firebaseapp.com",
   projectId: "waxal-kera",
   storageBucket: "waxal-kera.appspot.com",
   messagingSenderId: "58578486226",
   appId: "1:58578486226:web:cc5b5524ff63433631fe0b",
-};
-
-const app = initializeApp(FIREBASE_CONFIG);
+});
 const db = getFirestore(app);
 const storage = getStorage(app);
 
@@ -36,12 +39,13 @@ exports.getPromptsCollectionRef = async () => {
   return db.collection("prompts");
 };
 
-exports.getParticipantDocRef = async (participantId, isParticipantPhone = false) => {
+exports.getParticipantDocRef = async (participantId, isParticipantPhone) => {
   try {
+    partColRef = await this.getParticipantsCollectionRef();
     if (!isParticipantPhone) {
-      return getParticipantsCollectionRef().doc(participantId);
+      return partColRef.doc(participantId);
     } else {
-      const querySnapshot = await getParticipantsCollectionRef().where("phone", "==", participantId).get();
+      const querySnapshot = await partColRef.where("phone", "==", participantId).get();
 
       if (querySnapshot.size === 1) {
         const docRef = querySnapshot.docs[0].ref;
@@ -59,7 +63,7 @@ exports.getParticipantDocRef = async (participantId, isParticipantPhone = false)
 
 exports.getResponseDocRef = async (responseId) => {
   try {
-    return getResponsesCollectionRef().doc(responseId);
+    return this.getResponsesCollectionRef().doc(responseId);
   } catch (error) {
     throw error;
   }
@@ -96,8 +100,8 @@ exports.updateParticipantAfterResponse = async (participantRef, participantData)
 exports.addParticipantResponse = async (participantRef, promptId, dlLink, duration) => {
   const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
   console.log("Adding response to sheet");
-  const responsesCol = await getResponsesCollectionRef();
-  const promptCol = await getPromptsCollectionRef();
+  const responsesCol = await this.getResponsesCollectionRef();
+  const promptCol = await this.getPromptsCollectionRef();
   const language = varsHelper.getVar("speech-language");
 
   responsesCol

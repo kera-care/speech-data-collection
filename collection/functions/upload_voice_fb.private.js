@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const got = require("got");
 const mm = require("music-metadata");
+const fetch = require("node-fetch");
 
 const tmp_dir = require("os").tmpdir();
 const PUBLIC_DIR = `${tmp_dir}/mms_images`;
@@ -27,8 +28,12 @@ if (!fs.existsSync(PUBLIC_DIR)) {
 exports.uploadVoice = async (context, promptId, mediaUrl, participantRef, participantData) => {
   const stream = got.stream(mediaUrl);
   let duration = await extractDuration(stream);
+  console.log("duration");
+  console.log(duration);
 
   let minLength = parseInt(varsHelper.getVar("min-audio-length-secs"));
+  console.log("min lenght");
+  console.log(minLength);
 
   // Notify the user if the message duration is too short.
   if (duration < minLength) {
@@ -39,10 +44,14 @@ exports.uploadVoice = async (context, promptId, mediaUrl, participantRef, partic
     console.log("Adding response: Uploading to storage");
     // Upload to GCP storage bucket.
     const bucket = await firebaseHelper.getStorageBucket();
+    console.log("bucket ------------------");
+    console.log(bucket);
     const uploadedFile = await uploadToDirectory(promptId, participantRef.id, mediaUrl, bucket);
+    console.log("uploaded file ------------------");
+    console.log(uploadedFile);
     const dlLink = await uploadedFile.getSignedUrl({
       action: "read",
-      expires: "2099-01-01", 
+      expires: "2099-01-01",
     });
 
     // Update Response and Participant spreadsheets.
@@ -69,20 +78,20 @@ async function uploadToDirectory(promptId, participantId, mediaUrl, bucket) {
   response.body.pipe(fileStream);
 
   // Upload to storage bucket/{prompt}/{participant}.
-  bucket
-    .upload(fullPath, {
+  try {
+    uploadRep = await bucket.upload(fullPath, {
       destination: destinationPath,
       gzip: true,
       metadata: {
         cacheControl: "public, max-age=31536000",
       },
-    })
-    .then((uploadResp) => {
-      return uploadResp[0];
-    })
-    .catch((e) => {
-      throw e;
     });
+    console.log('uploadRep-----------------')
+    console.log(uploadRep)
+    return uploadRep[0]
+  } catch (e) {
+    throw e;
+  }
 }
 
 /**
