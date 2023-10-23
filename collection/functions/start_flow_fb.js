@@ -29,7 +29,6 @@ exports.handler = async (context, event, callback) => {
     } else {
       const participantData = participantSnapshot.data();
       console.log(`Participant status is ${participantData["status"]}`);
-      console.log(3);
 
       if (participantData["status"] === "Consented") {
         // Send consent audio for first timers.
@@ -131,7 +130,6 @@ async function handlePromptResponse(context, body, mediaUrl, participantRef, par
  */
 async function handleSendPrompt(context, participantData) {
   const promptFetchHelper = require(Runtime.getFunctions()["prompt_fetch_fb"].path);
-  console.log(4);
   const isTranscription = participantData["type"] === "Transcriber";
 
   try {

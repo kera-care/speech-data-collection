@@ -28,12 +28,8 @@ if (!fs.existsSync(PUBLIC_DIR)) {
 exports.uploadVoice = async (context, promptId, mediaUrl, participantRef, participantData) => {
   const stream = got.stream(mediaUrl);
   let duration = await extractDuration(stream);
-  console.log("duration");
-  console.log(duration);
 
   let minLength = parseInt(varsHelper.getVar("min-audio-length-secs"));
-  console.log("min lenght");
-  console.log(minLength);
 
   // Notify the user if the message duration is too short.
   if (duration < minLength) {
@@ -82,7 +78,7 @@ async function uploadToDirectory(promptId, participantId, mediaUrl, bucket) {
         cacheControl: "public, max-age=31536000",
       },
     });
-    return uploadRep[0]
+    return uploadRep[0];
   } catch (e) {
     throw e;
   }
