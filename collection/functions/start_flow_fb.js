@@ -67,9 +67,9 @@ exports.handler = async (context, event, callback) => {
       console.log("Successfully updated participant data in firestore");
     }
   } catch (e) {
-    console.log(e);
-    // Handle the error as needed.
+    console.error(e);
     await promptHelper.sendPrompt(context, participantPhone, varsHelper.getVar("error-message-audio"), false);
+    
   }
   console.log("the end");
   return callback(null, event); //? return or not return?
@@ -111,7 +111,7 @@ async function handlePromptResponse(context, body, mediaUrl, participantRef, par
   // Mark completed if this response is the final one, else mark ready.
   participantData["answered"] += 1;
   participantData["status"] =
-    (participantData["answered"] + 1 >= participantData["number_questions"]) ? "Completed" : "Ready";
+    participantData["answered"] + 1 >= participantData["number_questions"] ? "Completed" : "Ready";
 
   console.log(`Next participant status is : ${participantData["status"]}`);
 
@@ -134,9 +134,17 @@ async function handleSendPrompt(context, participantData) {
   console.log(4);
   const isTranscription = participantData["type"] === "Transcriber";
 
+  try {
   const fetchedPrompt = isTranscription
     ? await transcriptionHelper.getNextPrompt(participantData["transcribed_responses"], participantData["language"])
     : await promptFetchHelper.getNextPrompt(participantData["used_prompts"]);
+  } catch (e) {
+    if (e.message === 'NoMorePromptError') {
+      return;
+    } else {
+      throw e
+    }
+  }
 
   const positionString = `${fetchedPrompt["position"]}/${participantData["number_questions"]}`;
 

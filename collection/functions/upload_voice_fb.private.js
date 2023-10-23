@@ -44,11 +44,7 @@ exports.uploadVoice = async (context, promptId, mediaUrl, participantRef, partic
     console.log("Adding response: Uploading to storage");
     // Upload to GCP storage bucket.
     const bucket = await firebaseHelper.getStorageBucket();
-    console.log("bucket ------------------");
-    console.log(bucket);
     const uploadedFile = await uploadToDirectory(promptId, participantRef.id, mediaUrl, bucket);
-    console.log("uploaded file ------------------");
-    console.log(uploadedFile);
     const dlLink = await uploadedFile.getSignedUrl({
       action: "read",
       expires: "2099-01-01",
@@ -86,8 +82,6 @@ async function uploadToDirectory(promptId, participantId, mediaUrl, bucket) {
         cacheControl: "public, max-age=31536000",
       },
     });
-    console.log('uploadRep-----------------')
-    console.log(uploadRep)
     return uploadRep[0]
   } catch (e) {
     throw e;
@@ -105,7 +99,7 @@ async function extractDuration(stream) {
     const metadata = await mm.parseStream(stream);
     duration = metadata.format.duration;
   } catch (err) {
-    console.log(err);
+    console.error(err);
   }
   return duration;
 }

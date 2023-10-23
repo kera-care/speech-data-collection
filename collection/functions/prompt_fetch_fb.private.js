@@ -25,7 +25,8 @@ exports.getNextPrompt = async (usedPrompts) => {
         position: usedPrompts.length + 1,
       };
     } else {
-      throw new Error("All available prompts have been seen by this user. Please add more to continue");
+      console.log("All available prompts have been seen by this user. Please add more to continue");
+      throw new Error('NoMorePromptError')
     }
   } catch (error) {
     throw error; // Propagate the error to the caller
