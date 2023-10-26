@@ -43,9 +43,9 @@ exports.uploadVoice = async (context, promptId, mediaUrl, participantRef, partic
       const bucket = await firebaseHelper.getStorageBucket();
 
       try {
-        const uploadedFile = await uploadToDirectory(promptId, participantRef.id, mediaUrl, bucket);
+        var uploadedFile = await uploadToDirectory(promptId, participantRef.id, mediaUrl, bucket);
       } catch (error) {
-        console.error("Error uploading file to storage", error)
+        console.error("Error uploading file to storage", error);
         throw error;
       }
 
@@ -55,16 +55,17 @@ exports.uploadVoice = async (context, promptId, mediaUrl, participantRef, partic
       });
 
       // Update Response and Participant spreadsheets.
-      await firebaseHelper
-        .addResponse(participantRef, promptId, dlLink, duration)
-        .then()
-        .catch((e) => {
-          console.error("Error adding new response to the collection but audio successfully uploaded to storage.");
-          throw e;
-        });
-      return true;
+      try {
+        await firebaseHelper.addResponse(participantRef, promptId, dlLink, duration);
+        return true;
+      } catch (e) {
+        console.error("Error adding new response. The uploaded audio will be deleted.");
+        await uploadedFile.delete();
+        throw e;
+      }
     } catch (error) {
       console.error("The following error occurred:", error);
+      return false
     }
   }
 };

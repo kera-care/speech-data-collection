@@ -1,6 +1,6 @@
 const { FieldPath, FieldValue } = require("firebase-admin/firestore");
 const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
-const firebase_helper = require(Runtime.getFunctions()["google_firebase_helper"].path);
+const firebaseHelper = require(Runtime.getFunctions()["google_firebaseHelper"].path);
 
 /**
  * Add a new transcription row.
@@ -12,14 +12,18 @@ const firebase_helper = require(Runtime.getFunctions()["google_firebase_helper"]
  */
 exports.addTranscription = async (participantRef, participantData, responseId, text) => {
   try {
-    const transcriptionsCol = await firebase_helper.getTranscriptionCollectionRef();
-    const responsesCol = await firebase_helper.getResponsesCollectionRef();
+    const transcriptionsCol = await firebaseHelper.getTranscriptionCollectionRef();
+    const responsesCol = await firebaseHelper.getResponsesCollectionRef();
     const language = varsHelper.getVar("transcription-language");
 
-    // Add transcription row.
-    console.log("Adding transcription document to database");
-    const docRef = await transcriptionsCol
-      .add({
+    // Add transcription.
+    writeBatch = await firebaseHelper.getWriteBatch();
+    console.log("Adding transcription document to write batch");
+    console.log("Adding response document update to write batch");
+
+    docRef = transcriptionsCol.doc();
+    await writeBatch
+      .set(docRef, {
         creation_date: new Date().toISOString(),
         transcriber_path: participantRef.path,
         target_language: language,
@@ -27,27 +31,11 @@ exports.addTranscription = async (participantRef, participantData, responseId, t
         status: "New",
         response_path: await responsesCol.doc(responseId).path,
       })
-      .then()
-      .catch((e) => {
-        console.log("Error when adding new transcription.")
-        throw e;
-      });
-    console.log("Transcription document successfully added");
+      .update(responsesCol.doc(responseId), { [`transcription_counts.${language}`]: FieldValue.increment(1) })
+      .commit();
 
+    console.log("Write batch successfully committed");
     participantData["transcribed_responses"].push(docRef.id); // Passed by reference
-
-    console.log("Updating transcription count in the response document");
-    await responsesCol
-      .doc(responseId)
-      .update({
-        [`transcription_counts.${language}`]: FieldValue.increment(1),
-      })
-      .then()
-      .catch((e) => {
-        console.log("Error when updating response document.")
-        throw e;
-      });
-    console.log("Response document successfully updated");
   } catch (error) {
     console.error("The following error occurred:", error);
   }
@@ -63,7 +51,7 @@ exports.addTranscription = async (participantRef, participantData, responseId, t
 exports.getNextPrompt = async (transcribedResponses, language) => {
   try {
     // Identify and get unused prompts.
-    const respColRef = await firebase_helper.getResponsesCollectionRef();
+    const respColRef = await firebaseHelper.getResponsesCollectionRef();
     const notTranscribedRespsQuerySnapshot = await respColRef
       .where(FieldPath.documentId(), "not-in", transcribedResponses)
       .where(`transcription_counts.${language}`, "<", parseInt(varsHelper.getVar("transcriptions-per-response")))

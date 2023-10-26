@@ -77,7 +77,7 @@ exports.getStorageBucket = async () => {
   }
 };
 
-exports.getNewWriteBatch = async () => {
+exports.getWriteBatch = async () => {
   return db.batch()
 }
 
