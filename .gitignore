@@ -1,0 +1,8 @@
+# Testing files
+notebook.ipynb
+
+# VS code files
+.vscode
+
+# MacOS files
+.DS_Store
