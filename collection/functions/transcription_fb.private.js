@@ -18,28 +18,40 @@ exports.addTranscription = async (participantRef, participantData, responseId, t
 
     // Add transcription row.
     console.log("Adding transcription document to database");
-    const docRef = await transcriptionsCol.add({
-      creation_date: new Date().toISOString(),
-      transcriber_path: participantRef.path,
-      target_language: language,
-      text: text,
-      status: "New",
-      response_path: await responsesCol.doc(responseId).path,
-    });
+    const docRef = await transcriptionsCol
+      .add({
+        creation_date: new Date().toISOString(),
+        transcriber_path: participantRef.path,
+        target_language: language,
+        text: text,
+        status: "New",
+        response_path: await responsesCol.doc(responseId).path,
+      })
+      .then()
+      .catch((e) => {
+        console.log("Error when adding new transcription.")
+        throw e;
+      });
     console.log("Transcription document successfully added");
 
     participantData["transcribed_responses"].push(docRef.id); // Passed by reference
 
     console.log("Updating transcription count in the response document");
-    await responsesCol.doc(responseId).update({
-      [`transcription_counts.${language}`]: FieldValue.increment(1),
-    });
+    await responsesCol
+      .doc(responseId)
+      .update({
+        [`transcription_counts.${language}`]: FieldValue.increment(1),
+      })
+      .then()
+      .catch((e) => {
+        console.log("Error when updating response document.")
+        throw e;
+      });
     console.log("Response document successfully updated");
   } catch (error) {
-    console.error("An error occurred:", error);
+    console.error("The following error occurred:", error);
   }
 };
-
 
 /**
  * Fetch the next available prompt, filtering out any that have already been
@@ -74,7 +86,7 @@ exports.getNextPrompt = async (transcribedResponses, language) => {
       };
     } else {
       console.log("All available prompts have been seen by this user. Please add more to continue");
-      throw new Error('NoMorePromptError')
+      throw new Error("NoMorePromptError");
     }
   } catch (error) {
     throw error;

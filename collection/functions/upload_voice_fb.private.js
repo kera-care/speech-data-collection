@@ -37,18 +37,35 @@ exports.uploadVoice = async (context, promptId, mediaUrl, participantRef, partic
     await promptHelper.sendPrompt(context, participantData["phone"], tooShortAudio, false);
     return false;
   } else {
-    console.log("Adding response: Uploading to storage");
-    // Upload to GCP storage bucket.
-    const bucket = await firebaseHelper.getStorageBucket();
-    const uploadedFile = await uploadToDirectory(promptId, participantRef.id, mediaUrl, bucket);
-    const dlLink = await uploadedFile.getSignedUrl({
-      action: "read",
-      expires: "2099-01-01",
-    });
+    try {
+      console.log("Adding response: Uploading to storage");
+      // Upload to GCP storage bucket.
+      const bucket = await firebaseHelper.getStorageBucket();
 
-    // Update Response and Participant spreadsheets.
-    await firebaseHelper.addResponse(participantRef, promptId, dlLink, duration);
-    return participantData["status"] !== "Completed";
+      try {
+        const uploadedFile = await uploadToDirectory(promptId, participantRef.id, mediaUrl, bucket);
+      } catch (error) {
+        console.error("Error uploading file to storage", error)
+        throw error;
+      }
+
+      const dlLink = await uploadedFile.getSignedUrl({
+        action: "read",
+        expires: "2099-01-01",
+      });
+
+      // Update Response and Participant spreadsheets.
+      await firebaseHelper
+        .addResponse(participantRef, promptId, dlLink, duration)
+        .then()
+        .catch((e) => {
+          console.error("Error adding new response to the collection but audio successfully uploaded to storage.");
+          throw e;
+        });
+      return true;
+    } catch (error) {
+      console.error("The following error occurred:", error);
+    }
   }
 };
 

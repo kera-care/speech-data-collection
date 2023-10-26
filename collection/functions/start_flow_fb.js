@@ -1,7 +1,6 @@
 //? improve the vars file with the column names ? so that it's easier to maintain code, and it's default
 //* uploaded files are downloadable till 2099
 //TODO: adapt file documentation
-//TODO: check all missing async/await
 const { FieldValue } = require("firebase-admin/firestore");
 const promptHelper = require(Runtime.getFunctions()["messaging/send_prompt"].path);
 const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
@@ -68,7 +67,6 @@ exports.handler = async (context, event, callback) => {
   } catch (e) {
     console.error(e);
     await promptHelper.sendPrompt(context, participantPhone, varsHelper.getVar("error-message-audio"), false);
-    
   }
   console.log("the end");
   return callback(null, event); //? return or not return?
@@ -104,7 +102,11 @@ async function handlePromptResponse(context, body, mediaUrl, participantRef, par
       return;
     }
     const uploadHelper = require(Runtime.getFunctions()["upload_voice_fb"].path);
-    await uploadHelper.uploadVoice(context, lastPromptId, mediaUrl, participantRef, participantData);
+    success = await uploadHelper.uploadVoice(context, lastPromptId, mediaUrl, participantRef, participantData);
+    
+    if (!success) {
+      return;
+    }
   }
 
   // Mark completed if this response is the final one, else mark ready.
@@ -133,14 +135,14 @@ async function handleSendPrompt(context, participantData) {
   const isTranscription = participantData["type"] === "Transcriber";
 
   try {
-  const fetchedPrompt = isTranscription
-    ? await transcriptionHelper.getNextPrompt(participantData["transcribed_responses"], participantData["language"])
-    : await promptFetchHelper.getNextPrompt(participantData["used_prompts"]);
+    var fetchedPrompt = isTranscription
+      ? await transcriptionHelper.getNextPrompt(participantData["transcribed_responses"], participantData["language"])
+      : await promptFetchHelper.getNextPrompt(participantData["used_prompts"]);
   } catch (e) {
-    if (e.message === 'NoMorePromptError') {
+    if (e.message === "NoMorePromptError") {
       return;
     } else {
-      throw e
+      throw e;
     }
   }
 
@@ -152,7 +154,7 @@ async function handleSendPrompt(context, participantData) {
     context,
     participantData["phone"],
     fetchedPrompt["content"], //media URL or text
-    fetchedPrompt["type"] === "Text"
+    fetchedPrompt["type"] === "text"
   );
 
   const usedIDsArrayName = isTranscription ? "transcribed_responses" : "used_prompts";
