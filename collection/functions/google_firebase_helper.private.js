@@ -77,6 +77,10 @@ exports.getStorageBucket = async () => {
   }
 };
 
+exports.getNewWriteBatch = async () => {
+  return db.batch()
+}
+
 exports.updateParticipantAfterResponse = async (participantRef, participantData) => {
   console.log("Applying change to participant data");
   participantRef
