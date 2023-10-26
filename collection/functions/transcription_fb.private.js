@@ -57,29 +57,43 @@ exports.getNextPrompt = async (transcribedResponses, language) => {
   try {
     // Identify and get unused prompts.
     const respColRef = firebaseHelper.getResponsesCollectionRef();
-    const notTranscribedRespsQuerySnapshot = await respColRef
+
+    const maxTranscriptions = parseInt(varsHelper.getVar("transcriptions-per-response"));
+    const randomRespId =
+      transcribedResponses.length > 5
+        ? transcribedResponses[Math.floor(Math.random() * matchingResponses.length)]
+        : respColRef.doc().id;
+
+    let notTranscribedQuery = respColRef
+      .orderBy(FieldPath.documentId(), "asc")
+      .startAt(randomRespId)
       .where(FieldPath.documentId(), "not-in", transcribedResponses)
-      .where(`transcription_counts.${language}`, "<", parseInt(varsHelper.getVar("transcriptions-per-response")))
-      .get();
+      .where(`transcription_counts.${language}`, "<", maxTranscriptions)
+      .limit(1);
 
-    const matchingResponses = [];
-    notTranscribedRespsQuerySnapshot.forEach((respDocSnapshot) => {
-      matchingResponses.push(respDocSnapshot);
-    });
+    let querySnapshot = await notTranscribedQuery.get();
 
-    if (matchingResponses.length > 0) {
-      const randomIndex = Math.floor(Math.random() * matchingResponses.length);
-      const randomResponse = matchingResponses[randomIndex];
+    if (querySnapshot.empty) {
+      querySnapshot = respColRef
+        .orderBy(FieldPath.documentId(), "desc")
+        .startAt(randomRespId)
+        .where(FieldPath.documentId(), "not-in", transcribedResponses)
+        .where(`transcription_counts.${language}`, "<", maxTranscriptions)
+        .limit(1)
+        .get();
+    }
 
+    if (querySnapshot.empty) {
+      console.log("All available prompts have been seen by this user. Please add more to continue");
+      throw new Error("NoMorePromptError");
+    } else {
+      const randomResponse = querySnapshot.docs[0]
       return {
         type: "audio",
         content: randomResponse.get("storage_link"),
         id: randomResponse.id,
         position: transcribedResponses.length + 1,
       };
-    } else {
-      console.log("All available prompts have been seen by this user. Please add more to continue");
-      throw new Error("NoMorePromptError");
     }
   } catch (error) {
     throw error;
