@@ -1,6 +1,6 @@
 const { FieldPath, FieldValue } = require("firebase-admin/firestore");
 const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
-const firebaseHelper = require(Runtime.getFunctions()["google_firebaseHelper"].path);
+const firebaseHelper = require(Runtime.getFunctions()["google_firebase_helper"].path);
 
 /**
  * Add a new transcription row.
