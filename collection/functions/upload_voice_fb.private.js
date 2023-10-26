@@ -47,8 +47,7 @@ exports.uploadVoice = async (context, promptId, mediaUrl, participantRef, partic
     });
 
     // Update Response and Participant spreadsheets.
-    await firebaseHelper.addParticipantResponse(participantRef, promptId, dlLink, duration);
-
+    await firebaseHelper.addResponse(participantRef, promptId, dlLink, duration);
     return participantData["status"] !== "Completed";
   }
 };

@@ -97,14 +97,14 @@ exports.updateParticipantAfterResponse = async (participantRef, participantData)
  * @param {string} bucket GCP storage bucket name.
  * @param {number} duration Duration in seconds of the audio response.
  */
-exports.addParticipantResponse = async (participantRef, promptId, dlLink, duration) => {
+exports.addResponse = async (participantRef, promptId, dlLink, duration) => {
   const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
   console.log("Adding response to sheet");
   const responsesCol = await this.getResponsesCollectionRef();
   const promptCol = await this.getPromptsCollectionRef();
   const language = varsHelper.getVar("speech-language");
 
-  responsesCol
+  await responsesCol
     .add({
       storage_link: dlLink,
       duration: duration,
@@ -120,5 +120,29 @@ exports.addParticipantResponse = async (participantRef, promptId, dlLink, durati
     .then()
     .catch((error) => {
       console.error("Error adding response:", error);
+    });
+};
+
+exports.addParticipant = async (name, phone, language, status, number_questions, type) => {
+  partColRef = await this.getParticipantsCollectionRef();
+
+  part = {
+    name: name,
+    phone: phone,
+    language: language,
+    type: type,
+    status: status,
+    number_questions: number_questions,
+    answered: 0,
+    transcribed_responses: [],
+    used_prompts: [],
+    creation_date: new Date().toISOString(),
+  };
+
+  await partColRef
+    .add(part)
+    .then()
+    .catch((error) => {
+      console.error("Error adding participant:", error);
     });
 };
