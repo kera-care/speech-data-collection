@@ -5,7 +5,6 @@ const { getStorage } = require("firebase-admin/storage");
 const serviceAccount = require("../assets/service_account_key.private.json");
 //+ check how to use dotenv
 // Your web app's Firebase configuration //! this is temporary, will then be edited out
-
 const app = initializeApp({
   credential: credential.cert(serviceAccount),
   //databaseURL: "waxal-kera.firebaseapp.com",
@@ -19,29 +18,41 @@ const app = initializeApp({
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-exports.getParticipantsCollectionRef = async () => {
+exports.getParticipantsCollectionRef = () => {
   // console.log(`Fetching participants collection`);
-  return db.collection("participants");
+  try {
+    return db.collection("participants");
+  } catch (error) {
+    throw error;
+  }
 };
 
-exports.getResponsesCollectionRef = async () => {
+exports.getResponsesCollectionRef = () => {
   //console.log(`Fetching responses collection`);
-  return db.collection("responses");
+  try {
+    return db.collection("responses");
+  } catch (error) {
+    throw error;
+  }
 };
 
-exports.getTranscriptionsCollectionRef = async () => {
+exports.getTranscriptionsCollectionRef = () => {
   //console.log(`Fetching transcriptions collection`);
   return db.collection("transcriptions");
 };
 
-exports.getPromptsCollectionRef = async () => {
+exports.getPromptsCollectionRef = () => {
   //console.log(`Fetching prompts collection`);
-  return db.collection("prompts");
+  try {
+    return db.collection("prompts");
+  } catch (error) {
+    throw error;
+  }
 };
 
 exports.getParticipantDocRef = async (participantId, isParticipantPhone) => {
   try {
-    partColRef = await this.getParticipantsCollectionRef();
+    partColRef = this.getParticipantsCollectionRef();
     if (!isParticipantPhone) {
       return partColRef.doc(participantId);
     } else {
@@ -61,7 +72,7 @@ exports.getParticipantDocRef = async (participantId, isParticipantPhone) => {
   }
 };
 
-exports.getResponseDocRef = async (responseId) => {
+exports.getResponseDocRef = (responseId) => {
   try {
     return this.getResponsesCollectionRef().doc(responseId);
   } catch (error) {
@@ -69,7 +80,7 @@ exports.getResponseDocRef = async (responseId) => {
   }
 };
 
-exports.getStorageBucket = async () => {
+exports.getStorageBucket = () => {
   try {
     return storage.bucket();
   } catch (e) {
@@ -77,13 +88,17 @@ exports.getStorageBucket = async () => {
   }
 };
 
-exports.getWriteBatch = async () => {
-  return db.batch()
-}
+exports.getWriteBatch = () => {
+  try {
+    return db.batch();
+  } catch (error) {
+    throw error;
+  }
+};
 
 exports.updateParticipantAfterResponse = async (participantRef, participantData) => {
   console.log("Applying change to participant data");
-  participantRef
+  await participantRef
     .update(participantData)
     .then(() => {
       console.log("Successfully updated participant data in firestore");
@@ -104,8 +119,8 @@ exports.updateParticipantAfterResponse = async (participantRef, participantData)
 exports.addResponse = async (participantRef, promptId, dlLink, duration) => {
   const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
   console.log("Adding response to sheet");
-  const responsesCol = await this.getResponsesCollectionRef();
-  const promptCol = await this.getPromptsCollectionRef();
+  const responsesCol = this.getResponsesCollectionRef();
+  const promptCol = this.getPromptsCollectionRef();
   const language = varsHelper.getVar("speech-language");
 
   await responsesCol
@@ -128,7 +143,7 @@ exports.addResponse = async (participantRef, promptId, dlLink, duration) => {
 };
 
 exports.addParticipant = async (name, phone, language, status, number_questions, type) => {
-  partColRef = await this.getParticipantsCollectionRef();
+  partColRef = this.getParticipantsCollectionRef();
 
   part = {
     name: name,

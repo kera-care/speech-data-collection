@@ -40,7 +40,7 @@ exports.uploadVoice = async (context, promptId, mediaUrl, participantRef, partic
     try {
       console.log("Adding response: Uploading to storage");
       // Upload to GCP storage bucket.
-      const bucket = await firebaseHelper.getStorageBucket();
+      const bucket = firebaseHelper.getStorageBucket();
 
       try {
         var uploadedFile = await uploadToDirectory(promptId, participantRef.id, mediaUrl, bucket);

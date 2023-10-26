@@ -12,12 +12,12 @@ const firebaseHelper = require(Runtime.getFunctions()["google_firebaseHelper"].p
  */
 exports.addTranscription = async (participantRef, participantData, responseId, text) => {
   try {
-    const transcriptionsCol = await firebaseHelper.getTranscriptionCollectionRef();
-    const responsesCol = await firebaseHelper.getResponsesCollectionRef();
+    const transcriptionsCol = firebaseHelper.getTranscriptionCollectionRef();
+    const responsesCol = firebaseHelper.getResponsesCollectionRef();
     const language = varsHelper.getVar("transcription-language");
 
     // Add transcription.
-    writeBatch = await firebaseHelper.getWriteBatch();
+    writeBatch = firebaseHelper.getWriteBatch();
     console.log("Adding transcription document to write batch");
     console.log("Adding response document update to write batch");
 
@@ -51,7 +51,7 @@ exports.addTranscription = async (participantRef, participantData, responseId, t
 exports.getNextPrompt = async (transcribedResponses, language) => {
   try {
     // Identify and get unused prompts.
-    const respColRef = await firebaseHelper.getResponsesCollectionRef();
+    const respColRef = firebaseHelper.getResponsesCollectionRef();
     const notTranscribedRespsQuerySnapshot = await respColRef
       .where(FieldPath.documentId(), "not-in", transcribedResponses)
       .where(`transcription_counts.${language}`, "<", parseInt(varsHelper.getVar("transcriptions-per-response")))

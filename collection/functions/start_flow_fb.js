@@ -103,7 +103,7 @@ async function handlePromptResponse(context, body, mediaUrl, participantRef, par
     }
     const uploadHelper = require(Runtime.getFunctions()["upload_voice_fb"].path);
     success = await uploadHelper.uploadVoice(context, lastPromptId, mediaUrl, participantRef, participantData);
-    
+
     if (!success) {
       return;
     }

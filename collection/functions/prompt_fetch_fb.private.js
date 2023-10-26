@@ -7,7 +7,7 @@ const firebase_helper = require(Runtime.getFunctions()["google_firebase_helper"]
  */
 exports.getNextPrompt = async (usedPrompts) => {
   try {
-    const promptsColRef = await firebase_helper.getPromptsCollectionRef();
+    const promptsColRef = firebase_helper.getPromptsCollectionRef();
     const unusedPromptsQuerySnapshot = await promptsColRef.where(FieldPath.documentId(), "not-in", usedPrompts).get();
 
     const matchingPrompts = [];
