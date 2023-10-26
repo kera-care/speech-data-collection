@@ -27,7 +27,7 @@ exports.sendPrompt = async (context, recipient, content, isText) => {
     };
     console.log(`Sending whatsapp request: ${JSON.stringify(request)}`);
     await backOff(() => context.getTwilioClient().messages.create(request));
-    console.log(`Done sending whatsapp request: ${JSON.stringify(request)}`);
+    console.log(`Done sending whatsapp request: ${JSON.stringify(request)}\n----------------`);
   } catch (e) {
     console.log(e);
     throw e;

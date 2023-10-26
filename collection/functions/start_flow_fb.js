@@ -14,6 +14,7 @@ const firebaseHelper = require(Runtime.getFunctions()["google_firebase_helper"].
  * @param callback event callback handler.
  */
 exports.handler = async (context, event, callback) => {
+  console.log("this is the beginning")
   // Strip non-numeric characters from the phone number.
   const participantPhone = event["From"].replace(/^\D+/g, "");
 
@@ -112,7 +113,7 @@ async function handlePromptResponse(context, body, mediaUrl, participantRef, par
   // Mark completed if this response is the final one, else mark ready.
   participantData["answered"] += 1;
   participantData["status"] =
-    participantData["answered"] + 1 >= participantData["number_questions"] ? "Completed" : "Ready";
+    participantData["answered"] >= participantData["number_questions"] ? "Completed" : "Ready";
 
   console.log(`Next participant status is : ${participantData["status"]}`);
 
