@@ -32,7 +32,12 @@ exports.addTranscription = async (participantRef, participantData, responseId, t
         response_path: await responsesCol.doc(responseId).path,
       })
       .update(responsesCol.doc(responseId), { [`transcription_counts.${language}`]: FieldValue.increment(1) })
-      .commit();
+      .commit()
+      .then()
+      .catch((e) => {
+        console.log("Error committing the write batch");
+        throw e;
+      });
 
     console.log("Write batch successfully committed");
     participantData["transcribed_responses"].push(docRef.id); // Passed by reference
