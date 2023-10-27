@@ -1,6 +1,7 @@
 //? improve the vars file with the column names ? so that it's easier to maintain code, and it's default
 //* uploaded files are downloadable till 2099
 //TODO: adapt file documentation
+//TODO: deal with type change, participant registration etc..
 const { FieldValue } = require("firebase-admin/firestore");
 const promptHelper = require(Runtime.getFunctions()["messaging/send_prompt"].path);
 const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
