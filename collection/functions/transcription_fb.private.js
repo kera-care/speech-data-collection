@@ -64,19 +64,18 @@ exports.getNextPrompt = async (transcribedResponses, language) => {
         ? transcribedResponses[Math.floor(Math.random() * matchingResponses.length)]
         : respColRef.doc().id;
 
-    let notTranscribedQuery = respColRef
+    let querySnapshot = await respColRef
       .orderBy(FieldPath.documentId(), "asc")
-      .startAt(randomRespId)
+      .startAfter(randomRespId)
       .where(FieldPath.documentId(), "not-in", transcribedResponses)
       .where(`transcription_counts.${language}`, "<", maxTranscriptions)
-      .limit(1);
-
-    let querySnapshot = await notTranscribedQuery.get();
+      .limit(1)
+      .get();
 
     if (querySnapshot.empty) {
       querySnapshot = respColRef
         .orderBy(FieldPath.documentId(), "desc")
-        .startAt(randomRespId)
+        .startAfter(randomRespId)
         .where(FieldPath.documentId(), "not-in", transcribedResponses)
         .where(`transcription_counts.${language}`, "<", maxTranscriptions)
         .limit(1)
