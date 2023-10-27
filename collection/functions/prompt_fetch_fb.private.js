@@ -8,25 +8,36 @@ const firebase_helper = require(Runtime.getFunctions()["google_firebase_helper"]
 exports.getNextPrompt = async (usedPrompts) => {
   try {
     const promptsColRef = firebase_helper.getPromptsCollectionRef();
-    const unusedPromptsQuerySnapshot = await promptsColRef.where(FieldPath.documentId(), "not-in", usedPrompts).get();
 
-    const matchingPrompts = [];
-    unusedPromptsQuerySnapshot.forEach((promptDocSnapshot) => {
-      matchingPrompts.push(promptDocSnapshot);
-    });
+    const dummyPromptId =
+      usedPrompts.length > 5 ? usedPrompts[Math.floor(Math.random() * usedPrompts.length)] : promptsColRef.doc().id;
 
-    if (matchingPrompts.length > 0) {
-      const randomIndex = Math.floor(Math.random() * matchingPrompts.length);
-      const randomPrompt = matchingPrompts[randomIndex];
+    let querySnapshot = await promptsColRef
+      .orderBy(FieldPath.documentId(), "asc")
+      .startAfter(dummyPromptId)
+      .where(FieldPath.documentId(), "not-in", usedPrompts)
+      .limit(1)
+      .get();
 
+    if (querySnapshot.empty) {
+      querySnapshot = await promptsColRef
+        .orderBy(FieldPath.documentId(), "desc")
+        .startAfter(dummyPromptId)
+        .where(FieldPath.documentId(), "not-in", usedPrompts)
+        .limit(1)
+        .get();
+    }
+
+    if (querySnapshot.empty) {
+      console.log("All available prompts have been seen by this user. Please add more to continue");
+      throw new Error("NoMorePromptsError");
+    } else {
+      const randomPrompt = querySnapshot.docs[0];
       return {
         ...randomPrompt.data(),
         id: randomPrompt.id,
-        position: usedPrompts.length + 1,
+        position: transcribedResponses.length + 1,
       };
-    } else {
-      console.log("All available prompts have been seen by this user. Please add more to continue");
-      throw new Error('NoMorePromptError')
     }
   } catch (error) {
     throw error; // Propagate the error to the caller

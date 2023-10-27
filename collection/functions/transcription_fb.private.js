@@ -59,14 +59,14 @@ exports.getNextPrompt = async (transcribedResponses, language) => {
     const respColRef = firebaseHelper.getResponsesCollectionRef();
 
     const maxTranscriptions = parseInt(varsHelper.getVar("transcriptions-per-response"));
-    const randomRespId =
+    const dummyRespId =
       transcribedResponses.length > 5
-        ? transcribedResponses[Math.floor(Math.random() * matchingResponses.length)]
+        ? transcribedResponses[Math.floor(Math.random() * transcribedResponses.length)]
         : respColRef.doc().id;
 
     let querySnapshot = await respColRef
       .orderBy(FieldPath.documentId(), "asc")
-      .startAfter(randomRespId)
+      .startAfter(dummyRespId)
       .where(FieldPath.documentId(), "not-in", transcribedResponses)
       .where(`transcription_counts.${language}`, "<", maxTranscriptions)
       .limit(1)
@@ -75,7 +75,7 @@ exports.getNextPrompt = async (transcribedResponses, language) => {
     if (querySnapshot.empty) {
       querySnapshot = respColRef
         .orderBy(FieldPath.documentId(), "desc")
-        .startAfter(randomRespId)
+        .startAfter(dummyRespId)
         .where(FieldPath.documentId(), "not-in", transcribedResponses)
         .where(`transcription_counts.${language}`, "<", maxTranscriptions)
         .limit(1)
@@ -83,8 +83,8 @@ exports.getNextPrompt = async (transcribedResponses, language) => {
     }
 
     if (querySnapshot.empty) {
-      console.log("All available prompts have been seen by this user. Please add more to continue");
-      throw new Error("NoMorePromptError");
+      console.log("All available responses have been seen by this user. Please add more to continue");
+      throw new Error("NoMoreResponsesError");
     } else {
       const randomResponse = querySnapshot.docs[0]
       return {
