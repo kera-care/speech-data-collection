@@ -2,6 +2,7 @@
 //* uploaded files are downloadable till 2099
 //TODO: adapt file documentation
 //TODO: deal with type change, participant registration etc..
+//TODO: Check callback positioning
 const { FieldValue } = require("firebase-admin/firestore");
 const promptHelper = require(Runtime.getFunctions()["messaging/send_prompt"].path);
 const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
@@ -15,7 +16,7 @@ const firebaseHelper = require(Runtime.getFunctions()["google_firebase_helper"].
  * @param callback event callback handler.
  */
 exports.handler = async (context, event, callback) => {
-  console.log("this is the beginning")
+  console.log("this is the beginning");
   // Strip non-numeric characters from the phone number.
   const participantPhone = event["From"].replace(/^\D+/g, "");
 
@@ -84,8 +85,6 @@ exports.handler = async (context, event, callback) => {
  * @returns
  */
 async function handlePromptResponse(context, body, mediaUrl, participantRef, participantData) {
-  const lastPromptId = participantData["used_prompts"][participantData["used_prompts"].length - 1];
-
   if (participantData["type"] === "Transcriber") {
     // Notify the user if they send a message that doesn't contain text.
     if (!body) {
@@ -94,7 +93,15 @@ async function handlePromptResponse(context, body, mediaUrl, participantRef, par
       await promptHelper.sendPrompt(context, participantData["phone"], msg, true);
       return;
     }
-    await transcriptionHelper.addTranscription(participantRef, participantData, lastPromptId, body);
+
+    const lastRespTranscribedId =
+      participantData["transcribed_responses"][participantData["transcribed_responses"].length - 1];
+    await transcriptionHelper.addTranscription(participantRef, participantData, lastRespTranscribedId, body);
+
+    // Mark completed if this response is the final one, else mark ready.
+    participantData["answered_transcriptions"] += 1;
+    participantData["status"] =
+      participantData["answered_transcriptions"] >= participantData["number_transcriptions"] ? "Completed" : "Ready";
   } else {
     // Notify the user if they send a message that doesn't contain audio.
     if (!mediaUrl) {
@@ -103,18 +110,20 @@ async function handlePromptResponse(context, body, mediaUrl, participantRef, par
       await promptHelper.sendPrompt(context, participantData["phone"], audio, false);
       return;
     }
-    const uploadHelper = require(Runtime.getFunctions()["upload_voice_fb"].path);
-    success = await uploadHelper.uploadVoice(context, lastPromptId, mediaUrl, participantRef, participantData);
 
-    if (!success) {
+    const lastPromptId = participantData["used_prompts"][participantData["used_prompts"].length - 1];
+    const uploadHelper = require(Runtime.getFunctions()["upload_voice_fb"].path);
+    notTooShort = await uploadHelper.uploadVoice(context, lastPromptId, mediaUrl, participantRef, participantData);
+
+    // Mark completed if this response is the final one, else mark ready.
+    participantData["answered_questions"] += 1;
+    participantData["status"] =
+      participantData["answered_questions"] >= participantData["number_questions"] ? "Completed" : "Ready";
+
+    if (!notTooShort) {
       return;
     }
   }
-
-  // Mark completed if this response is the final one, else mark ready.
-  participantData["answered"] += 1;
-  participantData["status"] =
-    participantData["answered"] >= participantData["number_questions"] ? "Completed" : "Ready";
 
   console.log(`Next participant status is : ${participantData["status"]}`);
 
