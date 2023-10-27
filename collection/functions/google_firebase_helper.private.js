@@ -3,17 +3,9 @@ const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldPath, FieldValue, Filter } = require("firebase-admin/firestore");
 const { getStorage } = require("firebase-admin/storage");
 const serviceAccount = require("../assets/service_account_key.private.json");
-//+ check how to use dotenv
-// Your web app's Firebase configuration //! this is temporary, will then be edited out
+
 const app = initializeApp({
-  credential: credential.cert(serviceAccount),
-  //databaseURL: "waxal-kera.firebaseapp.com",
-  apiKey: "AIzaSyBxY9M0NJT0o1UOWMaGWDkG-tV3WjLLytg",
-  authDomain: "waxal-kera.firebaseapp.com",
-  projectId: "waxal-kera",
-  storageBucket: "waxal-kera.appspot.com",
-  messagingSenderId: "58578486226",
-  appId: "1:58578486226:web:cc5b5524ff63433631fe0b",
+  credential: credential.cert(serviceAccount)
 });
 const db = getFirestore(app);
 const storage = getStorage(app);

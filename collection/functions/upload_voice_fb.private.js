@@ -65,7 +65,7 @@ exports.uploadVoice = async (context, promptId, mediaUrl, participantRef, partic
       }
     } catch (error) {
       console.error("The following error occurred:", error);
-      return false
+      return false;
     }
   }
 };
