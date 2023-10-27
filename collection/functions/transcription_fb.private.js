@@ -64,29 +64,40 @@ exports.getNextPrompt = async (transcribedResponses, language) => {
         ? transcribedResponses[Math.floor(Math.random() * transcribedResponses.length)]
         : respColRef.doc().id;
 
-    let querySnapshot = await respColRef
-      .orderBy(FieldPath.documentId(), "asc")
-      .startAfter(dummyRespId)
-      .where(FieldPath.documentId(), "not-in", transcribedResponses)
-      .where(`transcription_counts.${language}`, "<", maxTranscriptions)
-      .limit(1)
-      .get();
+    let querySnapshot;
 
-    if (querySnapshot.empty) {
-      querySnapshot = respColRef
-        .orderBy(FieldPath.documentId(), "desc")
-        .startAfter(dummyRespId)
-        .where(FieldPath.documentId(), "not-in", transcribedResponses)
+    if (transcribedResponses.length === 0) {
+      querySnapshot = await respColRef
+        .orderBy(FieldPath.documentId(), "asc")
         .where(`transcription_counts.${language}`, "<", maxTranscriptions)
+        .startAfter(dummyRespId)
         .limit(1)
         .get();
+    } else {
+      querySnapshot = await respColRef
+        .orderBy(FieldPath.documentId(), "asc")
+        .where(FieldPath.documentId(), "not-in", transcribedResponses)
+        .where(`transcription_counts.${language}`, "<", maxTranscriptions)
+        .startAfter(dummyRespId)
+        .limit(1)
+        .get();
+
+      if (querySnapshot.empty) {
+        querySnapshot = respColRef
+          .orderBy(FieldPath.documentId(), "desc")
+          .where(FieldPath.documentId(), "not-in", transcribedResponses)
+          .where(`transcription_counts.${language}`, "<", maxTranscriptions)
+          .startAfter(dummyRespId)
+          .limit(1)
+          .get();
+      }
     }
 
     if (querySnapshot.empty) {
       console.log("All available responses have been seen by this user. Please add more to continue");
       throw new Error("NoMoreResponsesError");
     } else {
-      const randomResponse = querySnapshot.docs[0]
+      const randomResponse = querySnapshot.docs[0];
       return {
         type: "audio",
         content: randomResponse.get("storage_link"),

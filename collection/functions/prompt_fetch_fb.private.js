@@ -12,20 +12,30 @@ exports.getNextPrompt = async (usedPrompts) => {
     const dummyPromptId =
       usedPrompts.length > 5 ? usedPrompts[Math.floor(Math.random() * usedPrompts.length)] : promptsColRef.doc().id;
 
-    let querySnapshot = await promptsColRef
-      .orderBy(FieldPath.documentId(), "asc")
-      .startAfter(dummyPromptId)
-      .where(FieldPath.documentId(), "not-in", usedPrompts)
-      .limit(1)
-      .get();
+    let querySnapshot;
 
-    if (querySnapshot.empty) {
+    if (usedPrompts.length === 0) {
       querySnapshot = await promptsColRef
-        .orderBy(FieldPath.documentId(), "desc")
+        .orderBy(FieldPath.documentId(), "asc")
         .startAfter(dummyPromptId)
-        .where(FieldPath.documentId(), "not-in", usedPrompts)
         .limit(1)
         .get();
+    } else {
+      querySnapshot = await promptsColRef
+        .orderBy(FieldPath.documentId(), "asc")
+        .where(FieldPath.documentId(), "not-in", usedPrompts)
+        .startAfter(dummyPromptId)
+        .limit(1)
+        .get();
+
+      if (querySnapshot.empty) {
+        querySnapshot = await promptsColRef
+          .orderBy(FieldPath.documentId(), "desc")
+          .where(FieldPath.documentId(), "not-in", usedPrompts)
+          .startAfter(dummyPromptId)
+          .limit(1)
+          .get();
+      }
     }
 
     if (querySnapshot.empty) {
@@ -36,7 +46,7 @@ exports.getNextPrompt = async (usedPrompts) => {
       return {
         ...randomPrompt.data(),
         id: randomPrompt.id,
-        position: transcribedResponses.length + 1,
+        position: usedPrompts.length + 1,
       };
     }
   } catch (error) {
