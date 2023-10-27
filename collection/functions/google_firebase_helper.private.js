@@ -5,7 +5,9 @@ const { getStorage } = require("firebase-admin/storage");
 const serviceAccount = require("../assets/service_account_key.private.json");
 
 const app = initializeApp({
-  credential: credential.cert(serviceAccount)
+  credential: credential.cert(serviceAccount),
+  projectId: "waxal-kera",
+  storageBucket: "waxal-kera.appspot.com"
 });
 const db = getFirestore(app);
 const storage = getStorage(app);
@@ -134,7 +136,7 @@ exports.addResponse = async (participantRef, promptId, dlLink, duration) => {
     });
 };
 
-exports.addParticipant = async (name, phone, language, status, number_questions, type) => {
+exports.addParticipant = async (name, phone, language, status, number_questions, number_transcriptions, type) => {
   partColRef = this.getParticipantsCollectionRef();
 
   part = {
@@ -144,7 +146,9 @@ exports.addParticipant = async (name, phone, language, status, number_questions,
     type: type,
     status: status,
     number_questions: number_questions,
-    answered: 0,
+    number_transcriptions: number_transcriptions,
+    answered_questions: 0,
+    answered_transcriptions: 0,
     transcribed_responses: [],
     used_prompts: [],
     creation_date: new Date().toISOString(),
