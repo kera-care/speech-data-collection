@@ -40,7 +40,7 @@ exports.getNextPrompt = async (usedPrompts) => {
 
     if (querySnapshot.empty) {
       console.log("All available prompts have been seen by this user. Please add more to continue");
-      throw new Error("NoMorePromptsError");
+      throw new Error("NoMorePromptError");
     } else {
       const randomPrompt = querySnapshot.docs[0];
       return {

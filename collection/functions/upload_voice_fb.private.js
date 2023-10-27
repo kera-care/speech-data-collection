@@ -45,7 +45,7 @@ exports.uploadVoice = async (context, promptId, mediaUrl, participantRef, partic
       try {
         var uploadedFile = await uploadToDirectory(promptId, participantRef.id, mediaUrl, bucket);
       } catch (error) {
-        console.error("Error uploading file to storage", error);
+        console.error("Error uploading file to storage");
         throw error;
       }
 
@@ -65,7 +65,7 @@ exports.uploadVoice = async (context, promptId, mediaUrl, participantRef, partic
       }
     } catch (error) {
       console.error("The following error occurred:", error);
-      return false;
+      throw error;
     }
   }
 };

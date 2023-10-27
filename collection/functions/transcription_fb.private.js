@@ -95,7 +95,7 @@ exports.getNextPrompt = async (transcribedResponses, language) => {
 
     if (querySnapshot.empty) {
       console.log("All available responses have been seen by this user. Please add more to continue");
-      throw new Error("NoMoreResponsesError");
+      throw new Error("NoMorePromptError");
     } else {
       const randomResponse = querySnapshot.docs[0];
       return {
