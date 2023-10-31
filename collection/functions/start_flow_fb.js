@@ -1,5 +1,6 @@
 //? improve the vars file with the column names ? so that it's easier to maintain code, and it's default
-//* uploaded files are downloadable till 2099
+//NOTE: uploaded files are downloadable till 2099
+//NOTE:
 //TODO: adapt file documentation
 //TODO: deal with type change, participant registration etc..
 //TODO: Check callback positioning
@@ -125,7 +126,10 @@ async function handlePromptResponse(context, body, mediaUrl, participantRef, par
     }
   }
 
-  console.log(`Next participant status is : ${participantData["status"]}`);
+  console.log(`Participant status is now : ${participantData["status"]}`);
+  console.log("Saving changes to the participant document in the firestore.");
+  await participantRef.update(participantData); //? may be redundant but better for data persistence I suppose ?
+  console.log("Successfully updated participant data in firestore\n"); 
 
   if (participantData["status"] !== "Completed") {
     // Send next prompt.
@@ -157,7 +161,9 @@ async function handleSendPrompt(context, participantData) {
     }
   }
 
-  const positionString = `${fetchedPrompt["position"]}/${participantData["number_questions"]}`;
+  const positionString = isTranscription
+    ? `${fetchedPrompt["position"]}/${participantData["number_questions"]}`
+    : `${fetchedPrompt["position"]}/${participantData["number_transcriptions"]}`;
 
   console.log(`Sending ${fetchedPrompt["type"]} prompt ${fetchedPrompt["content"]}`);
   await promptHelper.sendPrompt(context, participantData["phone"], positionString, true);
