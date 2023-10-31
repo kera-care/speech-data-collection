@@ -15,34 +15,28 @@ exports.getNextPrompt = async (usedPrompts) => {
     let querySnapshot;
 
     if (usedPrompts.length === 0) {
-      querySnapshot = await promptsColRef
-        .orderBy(FieldPath.documentId(), "asc")
-        .startAfter(dummyPromptId)
-        .limit(1)
-        .get();
+      query = promptsColRef.orderBy(FieldPath.documentId(), "asc").startAfter(dummyPromptId).limit(1);
+      querySnapshot = await query.get();
 
       if (querySnapshot.empty) {
-        querySnapshot = await promptsColRef
-          .orderBy(FieldPath.documentId(), "desc")
-          .startAfter(dummyPromptId)
-          .limit(1)
-          .get();
+        query = promptsColRef.orderBy(FieldPath.documentId(), "desc").startAfter(dummyPromptId).limit(1);
+        querySnapshot = await query.get();
       }
     } else {
-      querySnapshot = await promptsColRef
+      query = promptsColRef
         .orderBy(FieldPath.documentId(), "asc")
         .where(FieldPath.documentId(), "not-in", usedPrompts)
         .startAfter(dummyPromptId)
-        .limit(1)
-        .get();
+        .limit(1);
+      querySnapshot = await query.get();
 
       if (querySnapshot.empty) {
-        querySnapshot = await promptsColRef
+        query = promptsColRef
           .orderBy(FieldPath.documentId(), "desc")
           .where(FieldPath.documentId(), "not-in", usedPrompts)
           .startAfter(dummyPromptId)
-          .limit(1)
-          .get();
+          .limit(1);
+        querySnapshot = await query.get();
       }
     }
 
@@ -58,6 +52,6 @@ exports.getNextPrompt = async (usedPrompts) => {
       };
     }
   } catch (error) {
-    throw error; // Propagate the error to the caller
+    throw error;
   }
 };
