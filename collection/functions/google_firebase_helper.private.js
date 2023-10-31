@@ -7,7 +7,7 @@ const serviceAccount = require("../assets/service_account_key.private.json");
 const app = initializeApp({
   credential: credential.cert(serviceAccount),
   projectId: "waxal-kera",
-  storageBucket: "waxal-kera.appspot.com"
+  storageBucket: "waxal-kera.appspot.com",
 });
 const db = getFirestore(app);
 const storage = getStorage(app);
@@ -32,7 +32,11 @@ exports.getResponsesCollectionRef = () => {
 
 exports.getTranscriptionsCollectionRef = () => {
   //console.log(`Fetching transcriptions collection`);
-  return db.collection("transcriptions");
+  try {
+    return db.collection("transcriptions");
+  } catch (error) {
+    throw error;
+  }
 };
 
 exports.getPromptsCollectionRef = () => {
@@ -126,7 +130,10 @@ exports.addResponse = async (participantRef, promptId, dlLink, duration) => {
       prompt_path: promptCol.doc(promptId).path,
       response_date: new Date().toISOString(),
       transcription_counts: {
-        [`${language}`]: 1,
+        [`${language}`]: {
+          count: 1,
+          isFull: false,
+        },
       },
       status: "New",
     })
