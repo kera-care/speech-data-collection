@@ -1,3 +1,4 @@
+//NOTE: for queries, always create the query first (into some variable) and then get it
 const { FieldPath, FieldValue } = require("firebase-admin/firestore");
 const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
 const firebaseHelper = require(Runtime.getFunctions()["google_firebase_helper"].path);
@@ -12,8 +13,9 @@ const firebaseHelper = require(Runtime.getFunctions()["google_firebase_helper"].
  */
 exports.addTranscription = async (participantRef, participantData, responseId, text) => {
   try {
-    const transcriptionsCol = firebaseHelper.getTranscriptionCollectionRef();
+    const transcriptionsCol = firebaseHelper.getTranscriptionsCollectionRef();
     const responsesCol = firebaseHelper.getResponsesCollectionRef();
+    const maxTranscriptions = parseInt(varsHelper.getVar("transcriptions-per-response"));
     const language = varsHelper.getVar("transcription-language");
 
     // Add transcription.
@@ -21,9 +23,25 @@ exports.addTranscription = async (participantRef, participantData, responseId, t
     console.log("Adding transcription document to write batch");
     console.log("Adding response document update to write batch");
 
-    docRef = transcriptionsCol.doc();
+    transacRef = transcriptionsCol.doc();
+    respRef = responsesCol.doc(responseId)
+
+    const isFullPromise = respColRef
+      .get()
+      .then((respSnapshot) => {
+        count = respSnapshot.get(`transcription_counts.${language}.count`);
+        return count + 1 >= maxTranscriptions;
+      })
+      .catch((e) => {
+        console.log("Error while reading transcription count");
+        throw e;
+      });
+    
+    const isFull = await isFullPromise;
+
+
     await writeBatch
-      .set(docRef, {
+      .set(transacRef, {
         creation_date: new Date().toISOString(),
         transcriber_path: participantRef.path,
         target_language: language,
@@ -31,7 +49,10 @@ exports.addTranscription = async (participantRef, participantData, responseId, t
         status: "New",
         response_path: await responsesCol.doc(responseId).path,
       })
-      .update(responsesCol.doc(responseId), { [`transcription_counts.${language}`]: FieldValue.increment(1) })
+      .update(respRef, {
+        [`transcription_counts.${language}.count`]: FieldValue.increment(1),
+        [`transcription_counts.${language}.isFull`]: isFull,
+      })
       .commit()
       .then()
       .catch((e) => {
@@ -57,39 +78,47 @@ exports.getNextPrompt = async (transcribedResponses, language) => {
   try {
     // Identify and get unused prompts.
     const respColRef = firebaseHelper.getResponsesCollectionRef();
-
-    const maxTranscriptions = parseInt(varsHelper.getVar("transcriptions-per-response"));
     const dummyRespId =
       transcribedResponses.length > 5
         ? transcribedResponses[Math.floor(Math.random() * transcribedResponses.length)]
         : respColRef.doc().id;
 
     let querySnapshot;
+    let query;
 
     if (transcribedResponses.length === 0) {
-      querySnapshot = await respColRef
+      query = respColRef
+        .where(`transcription_counts.${language}.isFull`, "==", false) //TODO: change "isFull" to "is_full" for naming consistency
         .orderBy(FieldPath.documentId(), "asc")
-        .where(`transcription_counts.${language}`, "<", maxTranscriptions)
         .startAfter(dummyRespId)
-        .limit(1)
-        .get();
-    } else {
-      querySnapshot = await respColRef
-        .orderBy(FieldPath.documentId(), "asc")
-        .where(FieldPath.documentId(), "not-in", transcribedResponses)
-        .where(`transcription_counts.${language}`, "<", maxTranscriptions)
-        .startAfter(dummyRespId)
-        .limit(1)
-        .get();
+        .limit(1);
+      querySnapshot = await query.get();
 
       if (querySnapshot.empty) {
-        querySnapshot = respColRef
+        query = respColRef
+          .where(`transcription_counts.${language}.isFull`, "==", false)
+          .orderBy(FieldPath.documentId(), "desc")
+          .startAfter(dummyRespId)
+          .limit(1);
+        querySnapshot = await query.get();
+      }
+    } else {
+      query = respColRef
+        .where(`transcription_counts.${language}.isFull`, "==", false)
+        .orderBy(FieldPath.documentId(), "asc")
+        .where(FieldPath.documentId(), "not-in", transcribedResponses)
+        .startAfter(dummyRespId)
+        .limit(1);
+      querySnapshot = await query.get();
+
+      if (querySnapshot.empty) {
+        query = respColRef
+          .where(`transcription_counts.${language}.isFull`, "==", false)
           .orderBy(FieldPath.documentId(), "desc")
           .where(FieldPath.documentId(), "not-in", transcribedResponses)
-          .where(`transcription_counts.${language}`, "<", maxTranscriptions)
           .startAfter(dummyRespId)
-          .limit(1)
-          .get();
+          .limit(1);
+        querySnapshot = await query.get();
       }
     }
 
