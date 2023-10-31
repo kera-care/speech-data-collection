@@ -116,7 +116,7 @@ exports.updateParticipantAfterResponse = async (participantRef, participantData)
  */
 exports.addResponse = async (participantRef, promptId, dlLink, duration) => {
   const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
-  console.log("Adding response to sheet");
+  console.log("Adding response to firestore collection");
   const responsesCol = this.getResponsesCollectionRef();
   const promptCol = this.getPromptsCollectionRef();
   const language = varsHelper.getVar("speech-language");
@@ -131,7 +131,7 @@ exports.addResponse = async (participantRef, promptId, dlLink, duration) => {
       response_date: new Date().toISOString(),
       transcription_counts: {
         [`${language}`]: {
-          count: 1,
+          count: 0,
           isFull: false,
         },
       },
