@@ -4,6 +4,9 @@
 //TODO: adapt file documentation
 //TODO: deal with type change, participant registration etc..
 //TODO: Check callback positioning
+  //TODO: (maybe related) how to detect errors on Twilio's side ? eg. the request is sent to Twilio but the user doesn't get the prompt
+//TODO: adapt field type (documentReferences instead of strings, timestamps instead of strings)
+//TODO: normalize strings (all uppers, all lowers, etc... ?)
 const { FieldValue } = require("firebase-admin/firestore");
 const promptHelper = require(Runtime.getFunctions()["messaging/send_prompt"].path);
 const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
@@ -68,12 +71,13 @@ exports.handler = async (context, event, callback) => {
       await participantRef.update(participantData);
       console.log("Successfully updated participant data in firestore");
     }
+    console.log("the end");
+    return callback(null, event); //? what's the difference here with simply calling callback() ALSO why does it return "Response Type application/json; charset=utf-8" which throws a (non-fatal) twilio error?
   } catch (e) {
     console.error(e);
     await promptHelper.sendPrompt(context, participantPhone, varsHelper.getVar("error-message-audio"), false);
+    return callback(e)
   }
-  console.log("the end");
-  return callback(null, event); //? return or not return?
 };
 
 /**
@@ -97,7 +101,7 @@ async function handlePromptResponse(context, body, mediaUrl, participantRef, par
 
     const lastRespTranscribedId =
       participantData["transcribed_responses"][participantData["transcribed_responses"].length - 1];
-    await transcriptionHelper.addTranscription(participantRef, participantData, lastRespTranscribedId, body);
+    await transcriptionHelper.addTranscription(participantRef, lastRespTranscribedId, body);
 
     // Mark completed if this response is the final one, else mark ready.
     participantData["answered_transcriptions"] += 1;
@@ -126,7 +130,7 @@ async function handlePromptResponse(context, body, mediaUrl, participantRef, par
     }
   }
 
-  console.log(`Participant status is now : ${participantData["status"]}`);
+  console.log(`Participant status now is: ${participantData["status"]}`);
   console.log("Saving changes to the participant document in the firestore.");
   await participantRef.update(participantData); //? may be redundant but better for data persistence I suppose ?
   console.log("Successfully updated participant data in firestore\n"); 
@@ -165,7 +169,7 @@ async function handleSendPrompt(context, participantData) {
     ? `${fetchedPrompt["position"]}/${participantData["number_transcriptions"]}`
     : `${fetchedPrompt["position"]}/${participantData["number_questions"]}`;
 
-  console.log(`Sending ${fetchedPrompt["type"]} prompt ${fetchedPrompt["content"]}`);
+  console.log(`Sending ${fetchedPrompt["type"]} prompt ${fetchedPrompt["id"]}`);
   await promptHelper.sendPrompt(context, participantData["phone"], positionString, true);
   await promptHelper.sendPrompt(
     context,
