@@ -9,8 +9,8 @@ exports.getNextPrompt = async (usedPrompts) => {
   try {
     const promptsColRef = firebase_helper.getPromptsCollectionRef();
 
-    const dummyPromptId = //! put back to 5 once done testing
-      usedPrompts.length > 3 ? usedPrompts[Math.floor(Math.random() * usedPrompts.length)] : promptsColRef.doc().id;
+    const dummyPromptId = 
+      usedPrompts.length > 5 ? usedPrompts[Math.floor(Math.random() * usedPrompts.length)] : promptsColRef.doc().id;
 
     let querySnapshot;
 

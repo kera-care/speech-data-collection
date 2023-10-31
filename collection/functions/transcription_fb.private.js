@@ -3,15 +3,15 @@ const { FieldPath, FieldValue } = require("firebase-admin/firestore");
 const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
 const firebaseHelper = require(Runtime.getFunctions()["google_firebase_helper"].path);
 
+//? should transcriptions be stored like audio responses ? ie. at {responseID}/{partID} ?
 /**
  * Add a new transcription row.
  * @param participantRef Ref to the participant document in the firestore DB.
- * @param participantData current participant data
  * @param responseId ID of response being transcribed.
  * @param text Full text of transcription.
  * @return {Promise<void>}
  */
-exports.addTranscription = async (participantRef, participantData, responseId, text) => {
+exports.addTranscription = async (participantRef, responseId, text) => {
   try {
     const transcriptionsCol = firebaseHelper.getTranscriptionsCollectionRef();
     const responsesCol = firebaseHelper.getResponsesCollectionRef();
@@ -19,14 +19,15 @@ exports.addTranscription = async (participantRef, participantData, responseId, t
     const language = varsHelper.getVar("transcription-language");
 
     // Add transcription.
-    writeBatch = firebaseHelper.getWriteBatch();
-    console.log("Adding transcription document to write batch");
-    console.log("Adding response document update to write batch");
+    const writeBatch = firebaseHelper.getWriteBatch();
 
-    transacRef = transcriptionsCol.doc();
-    respRef = responsesCol.doc(responseId)
+    const respRef = responsesCol.doc(responseId);
+    const transacRef = transcriptionsCol.doc();
 
-    const isFullPromise = respColRef
+    console.log("Adding transcription '", transacRef.id, "' to document to write batch");
+    console.log("Adding response '", respRef.id, "' document update to write batch");
+
+    const isFullPromise = respRef
       .get()
       .then((respSnapshot) => {
         count = respSnapshot.get(`transcription_counts.${language}.count`);
@@ -36,7 +37,7 @@ exports.addTranscription = async (participantRef, participantData, responseId, t
         console.log("Error while reading transcription count");
         throw e;
       });
-    
+
     const isFull = await isFullPromise;
 
 
@@ -61,9 +62,9 @@ exports.addTranscription = async (participantRef, participantData, responseId, t
       });
 
     console.log("Write batch successfully committed");
-    participantData["transcribed_responses"].push(docRef.id); // Passed by reference
   } catch (error) {
     console.error("The following error occurred:", error);
+    throw error;
   }
 };
 
@@ -75,13 +76,16 @@ exports.addTranscription = async (participantRef, participantData, responseId, t
  * @return {Promise<{position: number, content: *, id: *, type: *}>}
  */
 exports.getNextPrompt = async (transcribedResponses, language) => {
+  console.log("transcribed responses : ", transcribedResponses)
   try {
     // Identify and get unused prompts.
     const respColRef = firebaseHelper.getResponsesCollectionRef();
     const dummyRespId =
-      transcribedResponses.length > 3  //! put back to 5 once done testing
+      transcribedResponses.length > 5
         ? transcribedResponses[Math.floor(Math.random() * transcribedResponses.length)]
         : respColRef.doc().id;
+
+    console.log("dummy ID is : ", dummyRespId)
 
     let querySnapshot;
     let query;
@@ -127,6 +131,7 @@ exports.getNextPrompt = async (transcribedResponses, language) => {
       throw new Error("NoMorePromptError");
     } else {
       const randomResponse = querySnapshot.docs[0];
+      console.log("random transcr ID", randomResponse.id)
       return {
         type: "audio",
         content: randomResponse.get("storage_link"),
