@@ -20,6 +20,14 @@ exports.getNextPrompt = async (usedPrompts) => {
         .startAfter(dummyPromptId)
         .limit(1)
         .get();
+
+      if (querySnapshot.empty) {
+        querySnapshot = await promptsColRef
+          .orderBy(FieldPath.documentId(), "desc")
+          .startAfter(dummyPromptId)
+          .limit(1)
+          .get();
+      }
     } else {
       querySnapshot = await promptsColRef
         .orderBy(FieldPath.documentId(), "asc")
