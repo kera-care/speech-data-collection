@@ -9,8 +9,8 @@ exports.getNextPrompt = async (usedPrompts) => {
   try {
     const promptsColRef = firebase_helper.getPromptsCollectionRef();
 
-    const dummyPromptId =
-      usedPrompts.length > 5 ? usedPrompts[Math.floor(Math.random() * usedPrompts.length)] : promptsColRef.doc().id;
+    const dummyPromptId = //! put back to 5 once done testing
+      usedPrompts.length > 3 ? usedPrompts[Math.floor(Math.random() * usedPrompts.length)] : promptsColRef.doc().id;
 
     let querySnapshot;
 
@@ -19,7 +19,7 @@ exports.getNextPrompt = async (usedPrompts) => {
       querySnapshot = await query.get();
 
       if (querySnapshot.empty) {
-        query = promptsColRef.orderBy(FieldPath.documentId(), "desc").startAfter(dummyPromptId).limit(1);
+        query = promptsColRef.orderBy(FieldPath.documentId(), "asc").endBefore(dummyPromptId).limitToLast(1);
         querySnapshot = await query.get();
       }
     } else {
@@ -32,10 +32,10 @@ exports.getNextPrompt = async (usedPrompts) => {
 
       if (querySnapshot.empty) {
         query = promptsColRef
-          .orderBy(FieldPath.documentId(), "desc")
+          .orderBy(FieldPath.documentId(), "asc")
           .where(FieldPath.documentId(), "not-in", usedPrompts)
-          .startAfter(dummyPromptId)
-          .limit(1);
+          .endBefore(dummyPromptId)
+          .limitToLast(1);
         querySnapshot = await query.get();
       }
     }

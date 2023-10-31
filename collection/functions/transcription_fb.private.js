@@ -79,7 +79,7 @@ exports.getNextPrompt = async (transcribedResponses, language) => {
     // Identify and get unused prompts.
     const respColRef = firebaseHelper.getResponsesCollectionRef();
     const dummyRespId =
-      transcribedResponses.length > 5
+      transcribedResponses.length > 3  //! put back to 5 once done testing
         ? transcribedResponses[Math.floor(Math.random() * transcribedResponses.length)]
         : respColRef.doc().id;
 
@@ -97,9 +97,9 @@ exports.getNextPrompt = async (transcribedResponses, language) => {
       if (querySnapshot.empty) {
         query = respColRef
           .where(`transcription_counts.${language}.isFull`, "==", false)
-          .orderBy(FieldPath.documentId(), "desc")
-          .startAfter(dummyRespId)
-          .limit(1);
+          .orderBy(FieldPath.documentId(), "asc")
+          .endBefore(dummyRespId)
+          .limitToLast(1);
         querySnapshot = await query.get();
       }
     } else {
@@ -114,10 +114,10 @@ exports.getNextPrompt = async (transcribedResponses, language) => {
       if (querySnapshot.empty) {
         query = respColRef
           .where(`transcription_counts.${language}.isFull`, "==", false)
-          .orderBy(FieldPath.documentId(), "desc")
+          .orderBy(FieldPath.documentId(), "asc")
           .where(FieldPath.documentId(), "not-in", transcribedResponses)
-          .startAfter(dummyRespId)
-          .limit(1);
+          .endBefore(dummyRespId)
+          .limitToLast(1);
         querySnapshot = await query.get();
       }
     }
