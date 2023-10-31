@@ -49,10 +49,16 @@ exports.uploadVoice = async (context, promptId, mediaUrl, participantRef, partic
         throw error;
       }
 
-      const dlLink = await uploadedFile.getSignedUrl({
-        action: "read",
-        expires: "2099-01-01",
-      });
+      let dlLink;
+      try {
+        dlLink = await uploadedFile.getSignedUrl({
+          action: "read",
+          expires: "2099-01-01",
+        })[0];
+      } catch (e) {
+        console.error("Error getting the file download link");
+        throw e;
+      }
 
       // Update Response and Participant spreadsheets.
       try {
