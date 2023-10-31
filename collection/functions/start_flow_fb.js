@@ -162,8 +162,8 @@ async function handleSendPrompt(context, participantData) {
   }
 
   const positionString = isTranscription
-    ? `${fetchedPrompt["position"]}/${participantData["number_questions"]}`
-    : `${fetchedPrompt["position"]}/${participantData["number_transcriptions"]}`;
+    ? `${fetchedPrompt["position"]}/${participantData["number_transcriptions"]}`
+    : `${fetchedPrompt["position"]}/${participantData["number_questions"]}`;
 
   console.log(`Sending ${fetchedPrompt["type"]} prompt ${fetchedPrompt["content"]}`);
   await promptHelper.sendPrompt(context, participantData["phone"], positionString, true);
