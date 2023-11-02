@@ -1,14 +1,14 @@
 //NOTE: for queries, always create the query first (into some variable) and then get it
-const { FieldPath, FieldValue } = require("firebase-admin/firestore");
+const { FieldPath, FieldValue, DocumentReference } = require("firebase-admin/firestore");
 const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
 const firebaseHelper = require(Runtime.getFunctions()["google_firebase_helper"].path);
 
 //? should transcriptions be stored like audio responses ? ie. at {responseID}/{partID} ?
 /**
- * Add a new transcription row.
- * @param participantRef Ref to the participant document in the firestore DB.
- * @param responseId ID of response being transcribed.
- * @param text Full text of transcription.
+ * Adds a new document to the transcription collection and updates the transcription count for the corresponding language in the response document.
+ * @param {DocumentReference} participantRef `DocumentReference` for the transcriber.
+ * @param {string} responseId ID of the transcribed response.
+ * @param {string} text Full transcription of the voice note.
  * @return {Promise<void>}
  */
 exports.addTranscription = async (participantRef, responseId, text) => {
@@ -16,9 +16,7 @@ exports.addTranscription = async (participantRef, responseId, text) => {
     const transcriptionsCol = firebaseHelper.getTranscriptionsCollectionRef();
     const responsesCol = firebaseHelper.getResponsesCollectionRef();
     const maxTranscriptions = parseInt(varsHelper.getVar("transcriptions-per-response"));
-    const language = varsHelper.getVar("transcription-language");
-
-    // Add transcription.
+    const language = varsHelper.getVar("transcription-language"); //TODO: language overhaul
     const writeBatch = firebaseHelper.getWriteBatch();
 
     const respRef = responsesCol.doc(responseId);
@@ -39,7 +37,6 @@ exports.addTranscription = async (participantRef, responseId, text) => {
       });
 
     const isFull = await isFullPromise;
-
 
     await writeBatch
       .set(transacRef, {
@@ -69,26 +66,23 @@ exports.addTranscription = async (participantRef, responseId, text) => {
 };
 
 /**
- * Fetch the next available prompt, filtering out any that have already been
- * responded to or that have reached their limit of transcriptions.
- * @param participantKey ID of participant to be prompted.
- * @param language The language transcriptions are expected in.
- * @return {Promise<{position: number, content: *, id: *, type: *}>}
+ * Fetches from the responses collection a random, unseen transcription prompt for the current participant.
+ * @param {array} transcribedResponses IDs of the transcription prompts the participant already transcribed.
+ * @param {string} language Language the prompt has to be transcribed to.
+ * @returns {Promise<object>} An object containing the link pointing to the file to transcribe, the file type, the transcription prompt ID and the number of seen transcription prompts including the fetched one.
  */
 exports.getNextPrompt = async (transcribedResponses, language) => {
-  console.log("transcribed responses : ", transcribedResponses)
+  // The way it works, it generates a random document ID, and then fetch the first prompt whose ID is bigger (alphanumerically).
+  // It takes the previous one if no higher prompt is available.
   try {
-    // Identify and get unused prompts.
     const respColRef = firebaseHelper.getResponsesCollectionRef();
     const dummyRespId = respColRef.doc().id;
-
-    console.log("dummy ID is : ", dummyRespId)
 
     let querySnapshot;
     let query;
 
-    // Firestore doesn't allow several inequality 'where' clauses, hence the need for the is_full variable
     if (transcribedResponses.length === 0) {
+      //Firestore doens't allow 'not-in' operations on empty arrays
       query = respColRef
         .where(`transcription_counts.${language}.isFull`, "==", false) //TODO: change "isFull" to "is_full" for naming consistency
         .orderBy(FieldPath.documentId(), "asc")
@@ -105,6 +99,7 @@ exports.getNextPrompt = async (transcribedResponses, language) => {
         querySnapshot = await query.get();
       }
     } else {
+      // Firestore doesn't allow several inequality 'where' clauses, hence the need for the is_full variable
       query = respColRef
         .where(`transcription_counts.${language}.isFull`, "==", false)
         .orderBy(FieldPath.documentId(), "asc")
@@ -129,7 +124,6 @@ exports.getNextPrompt = async (transcribedResponses, language) => {
       throw new Error("NoMorePromptError");
     } else {
       const randomResponse = querySnapshot.docs[0];
-      console.log("random transcr ID", randomResponse.id)
       return {
         type: "audio",
         content: randomResponse.get("storage_link"),

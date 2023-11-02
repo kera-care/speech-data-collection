@@ -1,8 +1,10 @@
+//TODO: Deal with the languages, currently they are defined in the project vars but also in the participant and response data. Normalize it all.
 const { credential } = require("firebase-admin");
 const { initializeApp } = require("firebase-admin/app");
-const { getFirestore, FieldPath, FieldValue, Filter } = require("firebase-admin/firestore");
+const { getFirestore, DocumentReference, CollectionReference, WriteBatch} = require("firebase-admin/firestore");
 const { getStorage } = require("firebase-admin/storage");
 const serviceAccount = require("../assets/service_account_key.private.json");
+const { PromptData, ParticipantData, ResponseData, TranscriptionData } = require("./typedefs.private")
 
 const app = initializeApp({
   credential: credential.cert(serviceAccount),
@@ -12,8 +14,11 @@ const app = initializeApp({
 const db = getFirestore(app);
 const storage = getStorage(app);
 
+/**
+ * Gets a `CollectionReference` instance that refers to the participant collection.
+ * @returns {CollectionReference<ParticipantData>} The `CollectionReference` instance.
+ */
 exports.getParticipantsCollectionRef = () => {
-  // console.log(`Fetching participants collection`);
   try {
     return db.collection("participants");
   } catch (error) {
@@ -21,8 +26,11 @@ exports.getParticipantsCollectionRef = () => {
   }
 };
 
+/**
+ * Gets a `CollectionReference` instance that refers to the response collection.
+ * @returns {CollectionReference<ResponseData>} The `CollectionReference` instance.
+ */
 exports.getResponsesCollectionRef = () => {
-  //console.log(`Fetching responses collection`);
   try {
     return db.collection("responses");
   } catch (error) {
@@ -30,8 +38,11 @@ exports.getResponsesCollectionRef = () => {
   }
 };
 
+/**
+ * Gets a `CollectionReference` instance that refers to the transcription collection.
+ * @returns {CollectionReference<TranscriptionData>} The `CollectionReference` instance.
+ */
 exports.getTranscriptionsCollectionRef = () => {
-  //console.log(`Fetching transcriptions collection`);
   try {
     return db.collection("transcriptions");
   } catch (error) {
@@ -39,8 +50,11 @@ exports.getTranscriptionsCollectionRef = () => {
   }
 };
 
+/**
+ * Gets a `CollectionReference` instance that refers to the prompt collection.
+ * @returns {CollectionReference<PromptData>} The `CollectionReference` instance.
+ */
 exports.getPromptsCollectionRef = () => {
-  //console.log(`Fetching prompts collection`);
   try {
     return db.collection("prompts");
   } catch (error) {
@@ -48,6 +62,12 @@ exports.getPromptsCollectionRef = () => {
   }
 };
 
+/**
+ * Gets a `DocumentReference` instance that refers to the participant whose message is currently being handled. Asynchronous function if `isParticipantPhone` is set to `true`
+ * @param {string} participantId The participant phone number if `isParticipantPhone` is true, the participant document ID otherwise
+ * @param {boolean} isParticipantPhone `true` if `participantId` corresponds to the participant phone number, `false` if it's the document ID 
+ * @returns {Promise<DocumentReference>} A promise with the `DocumentReference`instance.
+ */
 exports.getParticipantDocRef = async (participantId, isParticipantPhone) => {
   try {
     partColRef = this.getParticipantsCollectionRef();
@@ -69,7 +89,11 @@ exports.getParticipantDocRef = async (participantId, isParticipantPhone) => {
     throw error;
   }
 };
-
+/**
+ * Gets a `DocumentReference` instance that refers to the response with the provided ID. 
+ * @param {string} responseId The document ID of the response we want to retrieve.
+ * @returns {DocumentReference} The `DocumentReference` instance.
+ */
 exports.getResponseDocRef = (responseId) => {
   try {
     return this.getResponsesCollectionRef().doc(responseId);
@@ -78,6 +102,10 @@ exports.getResponseDocRef = (responseId) => {
   }
 };
 
+/**
+ * Gets a reference to the project default Cloud Storage bucket.
+ * @returns A Bucket instance as defined in the @google-cloud/storage package.
+ */
 exports.getStorageBucket = () => {
   try {
     return storage.bucket();
@@ -86,6 +114,10 @@ exports.getStorageBucket = () => {
   }
 };
 
+/**
+ * Creates and gets a write batch, used for performing multiple writes as a single atomic operation.
+ * @returns {WriteBatch} The `WriteBatch` instance
+ */
 exports.getWriteBatch = () => {
   try {
     return db.batch();
@@ -94,6 +126,12 @@ exports.getWriteBatch = () => {
   }
 };
 
+/**
+ * Updates corresponding in the participant document the fields mentioned in `participantData`.
+ * @param {DocumentReference} participantRef `DocumentReference`for the participant to update.
+ * @param {ParticipantData} participantData Field/value pairs to update in the document.
+ * @returns {Promise<void>}
+ */
 exports.updateParticipantAfterResponse = async (participantRef, participantData) => {
   console.log("Applying change to participant data");
   await participantRef
@@ -107,12 +145,12 @@ exports.updateParticipantAfterResponse = async (participantRef, participantData)
 };
 
 /**
- * Update Response and Participant tables after uploading media.
- * @param {string} participantRef Reference to the firestore participant item.
- * @param {object} participantData Full participant object.
- * @param {string} promptId ID of the prompt being responded to.
- * @param {string} bucket GCP storage bucket name.
- * @param {number} duration Duration in seconds of the audio response.
+ * Creates and adds to the Firestore Database data about the response.
+ * @param {DocumentReference} participantRef `DocumentReference` of the participant who gave this response.
+ * @param {string} promptId Document ID of the prompt corresponding to the response.
+ * @param {string} dlLink Link pointing to the file in Firebase Storage.
+ * @param {number} duration Duration in seconds of the response.
+ * @returns {Promise<Void>}
  */
 exports.addResponse = async (participantRef, promptId, dlLink, duration) => {
   const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
@@ -143,26 +181,38 @@ exports.addResponse = async (participantRef, promptId, dlLink, duration) => {
     });
 };
 
+//? Should a participant have several languages ? In case they can/want to answer in several languages. --> Would need careful implementation to know in what language the responses are
+//+ Currently not used.
+/** 
+ * Creates and adds to the Firestore Database a new participant data.
+ * @param {string} name Participant's name
+ * @param {string} phone Participant's phone number with country code but without '+' sign.
+ * @param {string} language Participant's language
+ * @param {string} status Participant's status
+ * @param {number} number_questions Number of prompts the participant will have to respond to.
+ * @param {number} number_transcriptions Number of voice notes the participant will have to transcribe.
+ * @param {string} type Whether the participant is a `Responder` or a `Transcriber`
+ * @returns {Promise<Void>}
+ */
 exports.addParticipant = async (name, phone, language, status, number_questions, number_transcriptions, type) => {
   partColRef = this.getParticipantsCollectionRef();
-
-  part = {
-    name: name,
-    phone: phone,
-    language: language,
-    type: type,
-    status: status,
-    number_questions: number_questions,
-    number_transcriptions: number_transcriptions,
-    answered_questions: 0,
-    answered_transcriptions: 0,
-    transcribed_responses: [],
-    used_prompts: [],
-    creation_date: new Date().toISOString(),
-  };
+  console.log("Adding participant to firestore collection");
 
   await partColRef
-    .add(part)
+    .add({
+      name: name,
+      phone: phone,
+      language: language,
+      type: type,
+      status: status,
+      number_questions: number_questions,
+      number_transcriptions: number_transcriptions,
+      answered_questions: 0,
+      answered_transcriptions: 0,
+      transcribed_responses: [],
+      used_prompts: [],
+      creation_date: new Date().toISOString(),
+    })
     .then()
     .catch((error) => {
       console.error("Error adding participant:", error);

@@ -3,21 +3,19 @@ const firebase_helper = require(Runtime.getFunctions()["google_firebase_helper"]
 
 /**
  * Fetches a random, unseen prompt for the current participant.
- * 
- * The random prompt is chosen in the following fashion : 
- * @param {array} usedPrompts Prompts the participant already answered to.
- * @returns {object} An object with a random prompt data, the prompt ID and the number of seen prompts including the fetched one.
+ * @param {array} usedPrompts IDs of prompts the participant already answered to.
+ * @returns {Promise<object>} An object with a random prompt data, the prompt ID and the number of seen prompts including the fetched one.
  */
 exports.getNextPrompt = async (usedPrompts) => {
+  // The way it works, it generates a random document ID, and then fetch the first prompt whose ID is bigger (alphanumerically). 
+  // It takes the previous one if no higher prompt is available.
   try {
     const promptsColRef = firebase_helper.getPromptsCollectionRef();
-
     const dummyPromptId = promptsColRef.doc().id;
 
     let querySnapshot;
-
-    if (usedPrompts.length === 0) {
-      query = promptsColRef.orderBy(FieldPath.documentId(), "asc").startAfter(dummyPromptId).limit(1);
+    if (usedPrompts.length === 0) { //Firestore doens't allow 'not-in' operations on empty arrays
+      query = promptsColRef.orderBy(FieldPath.documentId(), "asc").startAfter(dummyPromptId).limit(1); 
       querySnapshot = await query.get();
 
       if (querySnapshot.empty) {
@@ -48,7 +46,7 @@ exports.getNextPrompt = async (usedPrompts) => {
     } else {
       const randomPrompt = querySnapshot.docs[0];
       return {
-        ...randomPrompt.data(),
+        ...randomPrompt.data(), // content and type
         id: randomPrompt.id,
         position: usedPrompts.length + 1,
       };
