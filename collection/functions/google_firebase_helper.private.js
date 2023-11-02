@@ -3,6 +3,7 @@ const { credential } = require("firebase-admin");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, DocumentReference, CollectionReference, WriteBatch} = require("firebase-admin/firestore");
 const { getStorage } = require("firebase-admin/storage");
+const { Bucket } = require("@google-cloud/storage")
 const serviceAccount = require("../assets/service_account_key.private.json");
 const { PromptData, ParticipantData, ResponseData, TranscriptionData } = require("./typedefs.private")
 
@@ -104,7 +105,7 @@ exports.getResponseDocRef = (responseId) => {
 
 /**
  * Gets a reference to the project default Cloud Storage bucket.
- * @returns A Bucket instance as defined in the @google-cloud/storage package.
+ * @returns {Bucket} A bucket instance as defined in the @google-cloud/storage package.
  */
 exports.getStorageBucket = () => {
   try {

@@ -7,7 +7,10 @@
   //TODO: (maybe related) how to detect errors on Twilio's side ? eg. the request is sent to Twilio but the user doesn't get the prompt
 //TODO: adapt field type (documentReferences instead of strings, timestamps instead of strings)
 //TODO: normalize strings (all uppers, all lowers, etc... ?)
-const { FieldValue } = require("firebase-admin/firestore");
+//TODO: change .path to references directly when adding responses/trsancriptions
+const { DocumentReference } = require("firebase-admin/firestore");
+const { ParticipantData } = require("./typedefs.private")
+
 const promptHelper = require(Runtime.getFunctions()["messaging/send_prompt"].path);
 const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
 const transcriptionHelper = require(Runtime.getFunctions()["transcription_fb"].path);
@@ -15,9 +18,10 @@ const firebaseHelper = require(Runtime.getFunctions()["google_firebase_helper"].
 
 /**
  * Main entrypoint for Waxal workflow.
- * @param {object} context contains Twilio client context.
- * @param {object} event contains information about the user-triggered event.
- * @param callback event callback handler.
+ * @param {object} context Contains Twilio client context.
+ * @param {object} event Contains information about the user-triggered event.
+ * @param callback Event callback handler.
+ * @returns {Promise<void>}
  */
 exports.handler = async (context, event, callback) => {
   console.log("this is the beginning");
@@ -59,10 +63,9 @@ exports.handler = async (context, event, callback) => {
       }
 
       // If the status is completed, send the completion audio.
-      // This can either be the state at entry or after {@link handlePromptResponse}.
+      // This can either be the state at entry or after a call to `handlePromptResponse`.
       if (participantData["status"] === "Completed") {
         console.log("Sending the closing message");
-        // Send the closing message for completed users.
         const surveyCompletedAudio = varsHelper.getVar("survey-completed-audio");
         await promptHelper.sendPrompt(context, participantPhone, surveyCompletedAudio, false);
       }
@@ -72,7 +75,7 @@ exports.handler = async (context, event, callback) => {
       console.log("Successfully updated participant data in firestore");
     }
     console.log("the end");
-    return callback(null, event); //? what's the difference here with simply calling callback() ALSO why does it return "Response Type application/json; charset=utf-8" which throws a (non-fatal) twilio error?
+    return callback(null, event); //? what's the difference here with simply calling callback() ALSO why does it return "Response Type application/json; charset=utf-8" which throws a (non-fatal) twilio error every time?
   } catch (e) {
     console.error(e);
     await promptHelper.sendPrompt(context, participantPhone, varsHelper.getVar("error-message-audio"), false);
@@ -82,12 +85,12 @@ exports.handler = async (context, event, callback) => {
 
 /**
  * Handles the case where the user has been prompted and is expected to send a response.
- * @param {object} context contains Twilio client context.
+ * @param {object} context Contains Twilio client context.
  * @param {string} body Text content of participant message.
- * @param {string} mediaUrl the URL of the media contained in the participant's message.
- * @param {string} participantRef the reference to the firestore document representing the current user
- * @param {object} participantData the current participant data.
- * @returns
+ * @param {string} mediaUrl The URL (twilio-side) of the received whatsapp message.
+ * @param {DocumentReference} participantRef `DocumentReference` instance of the current participant.
+ * @param {ParticipantData} participantData The current participant data.
+ * @returns {Promise<void>}
  */
 async function handlePromptResponse(context, body, mediaUrl, participantRef, participantData) {
   if (participantData["type"] === "Transcriber") {
@@ -118,14 +121,16 @@ async function handlePromptResponse(context, body, mediaUrl, participantRef, par
 
     const lastPromptId = participantData["used_prompts"][participantData["used_prompts"].length - 1];
     const uploadHelper = require(Runtime.getFunctions()["upload_voice_fb"].path);
-    notTooShort = await uploadHelper.uploadVoice(context, lastPromptId, mediaUrl, participantRef, participantData);
+    tooShort = await uploadHelper.uploadVoice(context, lastPromptId, mediaUrl, participantRef);
 
     // Mark completed if this response is the final one, else mark ready.
     participantData["answered_questions"] += 1;
     participantData["status"] =
       participantData["answered_questions"] >= participantData["number_questions"] ? "Completed" : "Ready";
 
-    if (!notTooShort) {
+    if (tooShort) {
+      let tooShortAudio = varsHelper.getVar("voice-note-too-short-audio");
+      await promptHelper.sendPrompt(context, participantData['phone'], tooShortAudio, false);
       return;
     }
   }
@@ -146,8 +151,9 @@ async function handlePromptResponse(context, body, mediaUrl, participantRef, par
 
 /**
  * Handles the case where the user is ready for the next prompt.
- * @param {object} context contains Twilio client context.
- * @param {object} participantData the current participant data.
+ * @param {object} context Contains Twilio client context.
+ * @param {ParticipantData} participantData The current participant data.
+ * @returns {Promise<void>}
  */
 async function handleSendPrompt(context, participantData) {
   const promptFetchHelper = require(Runtime.getFunctions()["prompt_fetch_fb"].path);
@@ -174,10 +180,11 @@ async function handleSendPrompt(context, participantData) {
   await promptHelper.sendPrompt(
     context,
     participantData["phone"],
-    fetchedPrompt["content"], //media URL or text
+    fetchedPrompt["content"], //Either the media URL or the full text
     fetchedPrompt["type"] === "text"
   );
 
+  // Add the prompt/response ID to the used array in participant data.
   const usedIDsArrayName = isTranscription ? "transcribed_responses" : "used_prompts";
   participantData[usedIDsArrayName].push(fetchedPrompt["id"]);
   participantData["status"] = "Prompted";

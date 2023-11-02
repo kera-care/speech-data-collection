@@ -3,9 +3,9 @@ const { backOff } = require("exponential-backoff");
 /**
  * Sends a whatsapp message.
  * @param context Twilio client context.
- * @param recipient {string} Recipient phone number including country code.
- * @param content {string} Text to send or link to download the media, depending on the value of isText.
- * @param isText {boolean} Whether content is plain text or a link to download media.
+ * @param {string} recipient Recipient phone number including country code, with or without the '+' sign.
+ * @param {string} content Text to send or link to download the media, depending on the value of isText.
+ * @param {boolean} isText Whether content is plain text or a link to download media.
  * @return {Promise<void>}
  */
 exports.sendPrompt = async (context, recipient, content, isText) => {

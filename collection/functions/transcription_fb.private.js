@@ -8,7 +8,7 @@ const firebaseHelper = require(Runtime.getFunctions()["google_firebase_helper"].
  * Adds a new document to the transcription collection and updates the transcription count for the corresponding language in the response document.
  * @param {DocumentReference} participantRef `DocumentReference` for the transcriber.
  * @param {string} responseId ID of the transcribed response.
- * @param {string} text Full transcription of the voice note.
+ * @param {string} text Full transcription of the voice note response.
  * @return {Promise<void>}
  */
 exports.addTranscription = async (participantRef, responseId, text) => {
@@ -25,6 +25,7 @@ exports.addTranscription = async (participantRef, responseId, text) => {
     console.log("Adding transcription '", transacRef.id, "' to document to write batch");
     console.log("Adding response '", respRef.id, "' document update to write batch");
 
+    // We verify if adding this transcription makes the transcription count reach the max amount of transcription set per response per language
     const isFullPromise = respRef
       .get()
       .then((respSnapshot) => {
@@ -35,9 +36,9 @@ exports.addTranscription = async (participantRef, responseId, text) => {
         console.log("Error while reading transcription count");
         throw e;
       });
-
     const isFull = await isFullPromise;
 
+    // We want either both or none of the actions to be performed so we use a writeBatch
     await writeBatch
       .set(transacRef, {
         creation_date: new Date().toISOString(),

@@ -2,8 +2,8 @@ const fs = require('fs');
 
 /**
  * Fetches variable values from {@link assets/vars.private.json}
- * @param varName {string} name of the var to be fetched.
- * @return {string} value of the requested variable.
+ * @param {string} varName Name of the var to be fetched.
+ * @return {string} Value of the requested variable.
  */
 exports.getVar = (varName) => {
   return JSON.parse(
