@@ -121,7 +121,7 @@ async function handlePromptResponse(context, body, mediaUrl, participantRef, par
 
     const lastPromptId = participantData["used_prompts"][participantData["used_prompts"].length - 1];
     const uploadHelper = require(Runtime.getFunctions()["upload_voice_fb"].path);
-    tooShort = await uploadHelper.uploadVoice(context, lastPromptId, mediaUrl, participantRef);
+    tooShort = await uploadHelper.uploadVoice(lastPromptId, mediaUrl, participantRef);
 
     // Mark completed if this response is the final one, else mark ready.
     participantData["answered_questions"] += 1;

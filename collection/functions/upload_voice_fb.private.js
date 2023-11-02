@@ -26,7 +26,7 @@ if (!fs.existsSync(PUBLIC_DIR)) {
  * @param {DocumentReference} participantRef `DocumentReference` for the participant
  * @returns {boolean} Whether the voice note length is too short, in which case we can't proceed.
  */
-exports.uploadVoice = async (context, promptId, mediaUrl, participantRef) => {
+exports.uploadVoice = async (promptId, mediaUrl, participantRef) => {
   const stream = got.stream(mediaUrl);
   let duration = await extractDuration(stream);
   let minLength = parseInt(varsHelper.getVar("min-audio-length-secs"));
