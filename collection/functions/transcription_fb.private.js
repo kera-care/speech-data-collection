@@ -80,16 +80,14 @@ exports.getNextPrompt = async (transcribedResponses, language) => {
   try {
     // Identify and get unused prompts.
     const respColRef = firebaseHelper.getResponsesCollectionRef();
-    const dummyRespId =
-      transcribedResponses.length > 5
-        ? transcribedResponses[Math.floor(Math.random() * transcribedResponses.length)]
-        : respColRef.doc().id;
+    const dummyRespId = respColRef.doc().id;
 
     console.log("dummy ID is : ", dummyRespId)
 
     let querySnapshot;
     let query;
 
+    // Firestore doesn't allow several inequality 'where' clauses, hence the need for the is_full variable
     if (transcribedResponses.length === 0) {
       query = respColRef
         .where(`transcription_counts.${language}.isFull`, "==", false) //TODO: change "isFull" to "is_full" for naming consistency

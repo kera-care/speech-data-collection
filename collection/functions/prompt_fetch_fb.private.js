@@ -1,16 +1,18 @@
 const { FieldPath } = require("firebase-admin/firestore");
 const firebase_helper = require(Runtime.getFunctions()["google_firebase_helper"].path);
+
 /**
- * Fetches a random, unseen prompt for the given participant.
+ * Fetches a random, unseen prompt for the current participant.
+ * 
+ * The random prompt is chosen in the following fashion : 
  * @param {array} usedPrompts Prompts the participant already answered to.
- * @returns An object with a random prompt data, the prompt ID and the number of seen prompts including the fetched one.
+ * @returns {object} An object with a random prompt data, the prompt ID and the number of seen prompts including the fetched one.
  */
 exports.getNextPrompt = async (usedPrompts) => {
   try {
     const promptsColRef = firebase_helper.getPromptsCollectionRef();
 
-    const dummyPromptId = 
-      usedPrompts.length > 5 ? usedPrompts[Math.floor(Math.random() * usedPrompts.length)] : promptsColRef.doc().id;
+    const dummyPromptId = promptsColRef.doc().id;
 
     let querySnapshot;
 
