@@ -3,6 +3,8 @@ const path = require("path");
 const got = require("got");
 const mm = require("music-metadata");
 const fetch = require("node-fetch");
+const { DocumentReference } = require("firebase-admin/firestore");
+const { Bucket, File } = require("@google-cloud/storage");
 
 const tmp_dir = require("os").tmpdir();
 const PUBLIC_DIR = `${tmp_dir}/mms_images`;
@@ -17,29 +19,24 @@ if (!fs.existsSync(PUBLIC_DIR)) {
 }
 
 /**
- * Uploads audio file for voice note to GCP storage bucket.
+ * Uploads audio file for voice note to Firebase Storage and adds the response to Firestore.
  * @param {*} context Twilio client context.
  * @param {string} promptId ID of the prompt being responded to.
- * @param {string} mediaUrl URL of the audio sent by the user.
- * @param {string} participantRef
- * @param {object} participantData ID of the responding participant.
- * @returns a bool indicating whether to continue sending prompts. //? why though? it's not used
+ * @param {string} mediaUrl URL (twilio side) of the audio sent by the user.
+ * @param {DocumentReference} participantRef `DocumentReference` for the participant
+ * @returns {boolean} Whether the voice note length is too short, in which case we can't proceed.
  */
-exports.uploadVoice = async (context, promptId, mediaUrl, participantRef, participantData) => {
+exports.uploadVoice = async (context, promptId, mediaUrl, participantRef) => {
   const stream = got.stream(mediaUrl);
   let duration = await extractDuration(stream);
-
   let minLength = parseInt(varsHelper.getVar("min-audio-length-secs"));
 
   // Notify the user if the message duration is too short.
   if (duration < minLength) {
-    let tooShortAudio = varsHelper.getVar("voice-note-too-short-audio");
-    await promptHelper.sendPrompt(context, participantData["phone"], tooShortAudio, false);
-    return false;
+    return true;
   } else {
     try {
       console.log("Adding response: Uploading to storage");
-      // Upload to GCP storage bucket.
       const bucket = firebaseHelper.getStorageBucket();
 
       try {
@@ -53,18 +50,18 @@ exports.uploadVoice = async (context, promptId, mediaUrl, participantRef, partic
       try {
         dlLink = await uploadedFile.getSignedUrl({
           action: "read",
-          expires: "2099-01-01",
+          expires: "2099-01-01", // Hardcoded, is there a better way to deal with this ?
         })[0];
       } catch (e) {
         console.error("Error getting the file download link");
         throw e;
       }
 
-      // Update Response and Participant spreadsheets.
       try {
         await firebaseHelper.addResponse(participantRef, promptId, dlLink, duration);
-        return true;
+        return false;
       } catch (e) {
+        // Can't use a writeBatch for firestore and storage together, so we delete the stored file in case we coulnd't add the response document to firestore
         console.error("Error adding new response. The uploaded audio will be deleted.");
         await uploadedFile.delete();
         throw e;
@@ -77,22 +74,24 @@ exports.uploadVoice = async (context, promptId, mediaUrl, participantRef, partic
 };
 
 /**
- * Uploads to directory in the storage bucket.
+ * Uploads to the correct directory in the storage bucket.
  * @param {string} promptId ID of the prompt being responded to.
  * @param {string} participantId ID of the responding participant.
  * @param {string} mediaUrl URL of the audio file containing the response.
  * @param {Bucket} bucket GCP storage bucket being saved to.
+ * @returns {File} The uploaded google-cloud storage File object.
  */
 async function uploadToDirectory(promptId, participantId, mediaUrl, bucket) {
   console.log("Uploading response audio");
   const fullPath = path.resolve(`${PUBLIC_DIR}/${participantId}`);
   const fileStream = fs.createWriteStream(fullPath);
   const destinationPath = "responses/" + promptId + "/" + participantId + ".ogg";
-  // First write to a local file.
+
+  // First write to a local file because uploading directly to storage from URL is not supported.
   const response = await fetch(mediaUrl);
   response.body.pipe(fileStream);
 
-  // Upload to storage bucket/{prompt}/{participant}.
+  // Upload to storage bucketat responses/{promptId}/{participantId}.
   try {
     uploadRep = await bucket.upload(fullPath, {
       destination: destinationPath,
