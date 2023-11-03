@@ -1,5 +1,5 @@
 //NOTE: for queries, always create the query first (into some variable) and then get it
-const { FieldPath, FieldValue, DocumentReference } = require("firebase-admin/firestore");
+const { FieldPath, FieldValue, DocumentReference, Timestamp } = require("firebase-admin/firestore");
 const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
 const firebaseHelper = require(Runtime.getFunctions()["google_firebase_helper"].path);
 
@@ -41,12 +41,12 @@ exports.addTranscription = async (participantRef, responseId, text) => {
     // We want either both or none of the actions to be performed so we use a writeBatch
     await writeBatch
       .set(transacRef, {
-        creation_date: new Date().toISOString(),
-        transcriber_path: participantRef.path,
+        creation_date: Timestamp.now(),
+        participant_path: participantRef,
         target_language: language,
         text: text,
         status: "New",
-        response_path: await responsesCol.doc(responseId).path,
+        response_path: await responsesCol.doc(responseId),
       })
       .update(respRef, {
         [`transcription_counts.${language}.count`]: FieldValue.increment(1),

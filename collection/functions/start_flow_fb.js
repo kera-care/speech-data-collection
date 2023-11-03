@@ -1,6 +1,5 @@
 //? improve the vars file with the column names ? so that it's easier to maintain code, and it's default
 //NOTE: uploaded files are downloadable till 2099
-//NOTE:
 //TODO: adapt file documentation
 //TODO: deal with type change, participant registration etc..
 //TODO: Check callback positioning
@@ -15,7 +14,7 @@ const promptHelper = require(Runtime.getFunctions()["messaging/send_prompt"].pat
 const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
 const transcriptionHelper = require(Runtime.getFunctions()["transcription_fb"].path);
 const firebaseHelper = require(Runtime.getFunctions()["google_firebase_helper"].path);
-
+//TODO on saturday: change .path and everything
 /**
  * Main entrypoint for Waxal workflow.
  * @param {object} context Contains Twilio client context.

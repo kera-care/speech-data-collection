@@ -1,7 +1,7 @@
 //TODO: Deal with the languages, currently they are defined in the project vars but also in the participant and response data. Normalize it all.
 const { credential } = require("firebase-admin");
 const { initializeApp } = require("firebase-admin/app");
-const { getFirestore, DocumentReference, CollectionReference, WriteBatch} = require("firebase-admin/firestore");
+const { getFirestore, DocumentReference, CollectionReference, WriteBatch, Timestamp } = require("firebase-admin/firestore");
 const { getStorage } = require("firebase-admin/storage");
 const { Bucket } = require("@google-cloud/storage")
 const serviceAccount = require("../assets/service_account_key.private.json");
@@ -81,7 +81,7 @@ exports.getParticipantDocRef = async (participantId, isParticipantPhone) => {
         const docRef = querySnapshot.docs[0].ref;
         return docRef;
       } else if (querySnapshot.size === 0) {
-        throw new Error("Document not found with the specified phone number");
+        throw new Error("Document not found with the specified phone number"); //TODO create new part
       } else {
         throw new Error("Multiple documents found with the same phone number");
       }
@@ -165,9 +165,9 @@ exports.addResponse = async (participantRef, promptId, dlLink, duration) => {
       storage_link: dlLink,
       duration: duration,
       language: language,
-      participant_path: participantRef.path,
-      prompt_path: promptCol.doc(promptId).path,
-      response_date: new Date().toISOString(),
+      participant_path: participantRef,
+      prompt_path: promptCol.doc(promptId),
+      creation_date: Timestamp.now(),
       transcription_counts: {
         [`${language}`]: {
           count: 0,
@@ -212,7 +212,7 @@ exports.addParticipant = async (name, phone, language, status, number_questions,
       answered_transcriptions: 0,
       transcribed_responses: [],
       used_prompts: [],
-      creation_date: new Date().toISOString(),
+      creation_date: Timestamp.now(),
     })
     .then()
     .catch((error) => {
