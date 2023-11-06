@@ -17,7 +17,7 @@ exports.getVar = (varName) => {
  * @param {string} field Name of the field to be fetched.
  * @return {string} Value of the requested variable.
  */
-getFieldName = (collection, field) => {
+function getFieldName(collection, field) {
   let collections = this.getVar("document-fields");
   return collections[collection][field]
 };
