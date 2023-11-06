@@ -16,19 +16,12 @@ detail how to set up your own collection pipeline using the code.
 ## Before you start
 
 1. Sign up for a [Twilio](https://www.twilio.com/) account.
-2. Have available a [Google Cloud](https://console.cloud.google.com/) project
+2. Have available a [Google Firebase](https://firebase.google.com/) project
    with the following:
-    * A service
-      account ([documentation](https://cloud.google.com/iam/docs/creating-managing-service-accounts))
-      .
-    * A service account key JSON
-      file ([documentation](https://cloud.google.com/iam/docs/creating-managing-service-account-keys))
-      .
-    * A GCP storage
-      bucket ([documentation](https://cloud.google.com/storage/docs/creating-buckets))
-      with write access granted to the service account
-      above ([Instructions here](https://cloud.google.com/storage/docs/access-control/using-iam-permissions))
-      .
+    * A Firestore database ([documentation](https://firebase.google.com/docs/firestore)).
+    * A Cloud Storage for Firebase ([documentation](https://firebase.google.com/docs/storage)).
+    * The service account key JSON
+      file ([documentation](https://console.cloud.google.com/iam-admin/)) for the service account automatically created with your Firebase project.
 
 ## Prepare to run your Waxal server
 
@@ -41,7 +34,7 @@ sudo apt-get install npm
 ### Check out the code
 
 ```console
-git clone https://github.com/Waxal-Multilingual/speech-data.git
+git clone https://github.com/kvnfstn/speech-data-firebase.git
 cd speech-data/collection
 npm install
 ```
@@ -57,43 +50,14 @@ npm install
 
 #### Flow variables (collection/assets/vars.private.json)
 
-##### Spreadsheets
+##### Google Form
 
-The following variables are the Google Sheets IDs of documents needed for the
-flow (everything after d/ and before the next slash in the document URL). In
-each case, the *Key* field must be a unique identifier. Sequential numbers will
-suffice. For more information on the data columns, refer to
-the [README](https://github.com/Waxal-Multilingual/speech-data/blob/main/README.md)
-in the root directory.
-
-**NOTE**: Make sure these sheets are write-able by your robot user created
-above.
-
-* **participant-sheet**: Sheet for participant info. You can make a copy
-  of [this file](https://docs.google.com/spreadsheets/d/14wZIBMKUKySrvyw0xU4CmJpDUVtsUsS7DQxZBmaiBuA/edit#gid=0)
-  to get started.
-
-* **response-sheet**: Sheet where links to participant response audio files will
-  be stored. You can make a copy
-  of [this file](https://docs.google.com/spreadsheets/d/1Zb5eifySYaQ9eDdmOC133bo1Ut8FgfzxNQZL4m9gjB8/edit#gid=0)
-  to get started.
-
-* **prompt-sheet**: Sheet containing prompts. A prompt can be text, image or audio, depending on which column you
-  populate. You
-  can make a copy
-  of [this file](https://docs.google.com/spreadsheets/d/1468gA4cFf74-YuH9cXMbWRcHpZFFfP3z27e_NyjB0Bk/edit#gid=0)
-  to get started.
-
-* **transcription-sheet**: Sheet where transcriptions will be stored. You can
-  make a copy
-  of [this file](https://docs.google.com/spreadsheets/d/1MKzliEHKdHNJ00pwaObyhhTOGP7rMJN8QJOnQxgCMxk/edit#gid=0)
-  to get started.
+* **consent-form**: Link toward the consent form users must complete to register to the data collection.
 
 ##### Twilio
 
 * **whatsapp-number**: The Twilio Whatsapp
-  Sandbox [phone number](https://console.twilio.com/us1/develop/sms/settings/whatsapp-sandbox?frameUrl=%2Fconsole%2Fsms%2Fwhatsapp%2Fsandbox)
-  .
+  Sandbox [phone number](https://console.twilio.com/us1/develop/sms/settings/whatsapp-sandbox?frameUrl=%2Fconsole%2Fsms%2Fwhatsapp%2Fsandbox).
 
 ##### Audio Prompts
 
@@ -125,9 +89,6 @@ testing.
 
 ##### Misc
 
-* **storage-bucket**: Then name GCP storage bucket into which audio files will
-  be stored.
-
 * **min-audio-length-secs**: Minimum length of audio responses.
 
 * **transcriptions-per-response**: Number of transcriptions per response (per
@@ -153,10 +114,7 @@ Twilio server.
 
 ### Test your server locally
 
-To start a local server run ```npm start``` from ```speech-data/collection```.
-A sanity check will run to verify that the preliminary steps have all been completed and that your sheets have been set up correctly.
-Fix any errors that pop up until your server is running. Once the server is up,
-take note of the URL of the `start_flow` function. Example below:
+To start a local server run ```npm start``` from ```speech-data/collection```. Once the server is up, take note of the URL of the `start_flow` function. Example below:
 
 ```https://xxx.ngrok.io/start_flow```
 
@@ -176,20 +134,13 @@ you should be ready to test your collection flow.
 
 ## Run a data collection study
 
-### Prepare your prompts
+### Prepare your database and storage
 
-Waxal can be used to send text, image or audio prompts. You can find a selection of over 2000 image prompts
-in [this file](https://docs.google.com/spreadsheets/d/1wlItYWGXu3GtHWfQD8m8_FcUVqWsCzINPkwDB5fkExs/edit#gid=1031689018).
-For your own study, you can set the *Image* *Audio* or *Text* column for each prompt accordingly. Setting more than 1 column is not supported.
+In Firestore, create 4 collections : `participants`, `responses`, `prompts` and `transcriptions`. See the [typedef file](functions/typedefs.private.js) for which fields should be added.
+
+In Storage, create 3 folders: `audio-notification`, `prompts` (with subdirectories `audio` and `image`) and `responses`.
 
 ### Register a participant and start sending prompts
-
-#### Add to the participant sheet
-
-In your participant sheet, create a row for the participant similar to the one
-in
-the [Demo Participant Sheet](https://docs.google.com/spreadsheets/d/14wZIBMKUKySrvyw0xU4CmJpDUVtsUsS7DQxZBmaiBuA/edit#gid=0)
-.
 
 #### Invite to join your Twilio sandbox
 
@@ -219,27 +170,11 @@ process by sending **"hi"** to the bot.
 
 In a live study, you may want to automatically register users once they have
 completed the consent form. To see an example of this, take a look at
-the [example form](https://docs.google.com/forms/d/1V7qz6agNkI4zOAQxksi7mMdFFTIy0lTWBGfRvTSbUw8/edit)
-and [Apps Script Trigger](https://script.google.com/home/projects/18Bj3X4FranYU-ug4dfvfgLDqU6X8axWZythDT29gW8sBRfVd3krmJiDV/edit)
-.
+the [example form](https://docs.google.com/forms/d/1V7qz6agNkI4zOAQxksi7mMdFFTIy0lTWBGfRvTSbUw8/edit).
 
-This form installs a submit trigger that adds participants to the Particpant
-sheet and also provides a shortcut to pre-populate the sandbox registration
-Whatsapp message. Feel free to make a copy of the form for your study.
+We are using [Zapier](https://zapier.com/app/dashboard?shared_zap=018ba4a5-ff46-7c09-9d4c-ed741a78b2ee) to automatically populate our Firestore participants collection from the consent form. Make sure you adapt both to your use case.
 
-The 2 key parts of the form to update are:
-
-1. Setting the correct participant sheet ID on line 13 of
-   the [trigger](https://script.google.com/home/projects/18Bj3X4FranYU-ug4dfvfgLDqU6X8axWZythDT29gW8sBRfVd3krmJiDV/edit):
-
-```
-var sheet = SpreadsheetApp.openById("[your_participant_sheet_id]").getSheetByName("Participant")
-```
-
-2. Setting a confirmation message that provides the correct sandbox registration
-   message template (
-   Under [Settings](https://docs.google.com/forms/d/1V7qz6agNkI4zOAQxksi7mMdFFTIy0lTWBGfRvTSbUw8/edit#settings)
-   -> Presentation -> Confirmation Message)
+With the Google Form you can also set a confirmation message that provides the correct sandbox registration message template (Under [Settings](https://docs.google.com/forms/d/1V7qz6agNkI4zOAQxksi7mMdFFTIy0lTWBGfRvTSbUw8/edit#settings) -> Presentation -> Confirmation Message)
 
 ```
 Your consent has been recorded. Please follow the following link on your phone to register: https://wa.me/+14155238886?text=join%20[your_sandbox_code]
@@ -247,35 +182,18 @@ Your consent has been recorded. Please follow the following link on your phone t
 
 ### Find your audio data
 
-After each response is received, it is stored in your storage bucket under the
-folder ```{promptId}/{participantId}```. A row is also entered in the *Response*
-table with a link to the stored file and columns for the participant and prompt.
+After each response is received, it is stored in the firebase storage default bucket under the folder ```{promptId}/{participantId}```. A document is also entered in the `Responses` collection with a link to the stored file and more data.
 
 ### Collect transcriptions of your audio data
 
 Once you have concluded the speech collection phase of your study, you can use
 Waxal to crowd-source transcriptions via Whatsapp. To add a transcriber, simply
-set their *Type* column to **"Transcriber".**
+set their *Type* field to "**Transcriber**". 
 
-In this case, the audio files from the *Response* sheet will be sent to *Transcriber* participants in a uniformly distributed fashion. Text transcription responses will be written to the *transcription-sheet*
-file ([example](https://docs.google.com/spreadsheets/d/1MKzliEHKdHNJ00pwaObyhhTOGP7rMJN8QJOnQxgCMxk/edit#gid=0))
-.
+In this case, the audio files from the `Responses` collections will be sent to `Transcriber` participants in a uniformly distributed fashion. Text transcription responses will be written to the `Transcriptions` collection.  
+
 
 <figure>
-   <img src="https://github.com/Waxal-Multilingual/speech-data/blob/main/docs/audio_prompt.png?raw=true" alt="Example image prompt" style="width:300px; float: right"/>
+   <img src="https://github.com/Waxal-Multilingual/speech-data/blob/main/docs/audio_prompt.png?raw=true" alt="Example image prompt" style="width:300px;"/>
    <figcaption align = "center"><b>Example transcription prompt</b></figcaption>
-</figure>
-
-## Use the Waxal Manager app to transcribe and translate
-
-
-[Waxal Manager](https://www.appsheet.com/Template/AppDef?appName=WaxalManager-4528453-22-06-26)
-is an example [AppSheet](https://www.appsheet.com/) app that can be used to
-manage your data collection process. You can clone the app and point to your
-project's spreadsheets to use it. The app provides views for managing prompts,
-participants, responses, transcriptions and translations.
-
-<figure>
-   <img src="https://github.com/Waxal-Multilingual/speech-data/blob/main/docs/manager.png?raw=true" style="width: 500px">
-   <figcaption align = "center"><b>Waxal Manager App</b></figcaption>
-</figure>
+</figure>  
