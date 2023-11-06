@@ -28,7 +28,7 @@ getFieldName = (collection, field) => {
  * @return {string} Value of the requested variable.
  */
 exports.getParticipantField = (field) => {
-  return this.getFieldName("participants", field);
+  return getFieldName("participants", field);
 };
 
 /**
@@ -37,7 +37,7 @@ exports.getParticipantField = (field) => {
  * @return {string} Value of the requested variable.
  */
 exports.getResponseField = (field) => {
-  return this.getFieldName("responses", field);
+  return getFieldName("responses", field);
 };
 
 /**
@@ -46,7 +46,7 @@ exports.getResponseField = (field) => {
  * @return {string} Value of the requested variable.
  */
 exports.getTranscriptionField = (field) => {
-  return this.getFieldName("transcriptions", field);
+  return getFieldName("transcriptions", field);
 };
 
 /**
@@ -55,5 +55,5 @@ exports.getTranscriptionField = (field) => {
  * @return {string} Value of the requested variable.
  */
 exports.getPromptField = (field) => {
-  return this.getFieldName("prompts", field);
+  return getFieldName("prompts", field);
 };
