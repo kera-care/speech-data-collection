@@ -1,4 +1,4 @@
-const fs = require('fs');
+const fs = require("fs");
 
 /**
  * Fetches variable values from {@link assets/vars.private.json}
@@ -6,7 +6,54 @@ const fs = require('fs');
  * @return {string} Value of the requested variable.
  */
 exports.getVar = (varName) => {
-  return JSON.parse(
-      fs.readFileSync(
-          Runtime.getAssets()["/vars.json"].path).toString())[varName];
-}
+  return JSON.parse(fs.readFileSync(Runtime.getAssets()["/vars.json"].path).toString())[varName];
+};
+
+/**
+ * Fetches collection field name values from {@link assets/vars.private.json}.
+ * 
+ * This function is there in case one would want to use different field names in Firestore.
+ * @param {string} collection Name of the collection whose field name we have to retrieve.
+ * @param {string} field Name of the field to be fetched.
+ * @return {string} Value of the requested variable.
+ */
+getFieldName = (collection, field) => {
+  let collections = this.getVar("document-fields");
+  return collections[collection][field]
+};
+
+/**
+ * Fetches a field name from {@link `assets/vars.private.json`} for the participant documents
+ * @param {string} field Name of the field to be fetched.
+ * @return {string} Value of the requested variable.
+ */
+exports.getParticipantField = (field) => {
+  return this.getFieldName("participants", field);
+};
+
+/**
+ * Fetches a field name from {@link `assets/vars.private.json`} for the response documents
+ * @param {string} field Name of the field to be fetched.
+ * @return {string} Value of the requested variable.
+ */
+exports.getResponseField = (field) => {
+  return this.getFieldName("responses", field);
+};
+
+/**
+ * Fetches a field name from {@link `assets/vars.private.json`} for the transcription documents
+ * @param {string} field Name of the field to be fetched.
+ * @return {string} Value of the requested variable.
+ */
+exports.getTranscriptionField = (field) => {
+  return this.getFieldName("transcriptions", field);
+};
+
+/**
+ * Fetches a field name from {@link `assets/vars.private.json`} for the prompt documents
+ * @param {string} field Name of the field to be fetched.
+ * @return {string} Value of the requested variable.
+ */
+exports.getPromptField = (field) => {
+  return this.getFieldName("prompts", field);
+};
