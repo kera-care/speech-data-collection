@@ -3,12 +3,12 @@
 //TODO: adapt file documentation
 //TODO: deal with type change, participant registration etc..
 //TODO: Check callback positioning
-  //TODO: (maybe related) how to detect errors on Twilio's side ? eg. the request is sent to Twilio but the user doesn't get the prompt
+//TODO: (maybe related) how to detect errors on Twilio's side ? eg. the request is sent to Twilio but the user doesn't get the prompt
 //TODO: adapt field type (documentReferences instead of strings, timestamps instead of strings)
 //TODO: normalize strings (all uppers, all lowers, etc... ?)
 //TODO: change .path to references directly when adding responses/trsancriptions
 const { DocumentReference, Timestamp } = require("firebase-admin/firestore");
-const { ParticipantData } = require("./typedefs.private")
+const { ParticipantData } = require("./typedefs.private");
 
 const promptHelper = require(Runtime.getFunctions()["messaging/send_prompt"].path);
 const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
@@ -34,23 +34,23 @@ exports.handler = async (context, event, callback) => {
     if (!participantSnapshot.exists) {
       console.log("Participant not registered");
       let audio = varsHelper.getVar("not-registered-audio");
-      const consentForm = varsHelper.getVar("consent-form")
-      const consentText = `Please consider registering for the data collection by submitting a response to the following form : ${consentForm}`
+      let consentForm = varsHelper.getVar("consent-form");
+      let consentText = `Please consider registering for the data collection by submitting a response to the following form : ${consentForm}`;
       await promptHelper.sendPrompt(context, participantPhone, audio, false);
-      await promptHelper.sendPrompt(context, participantPhone, consentText, true)
+      await promptHelper.sendPrompt(context, participantPhone, consentText, true);
     } else {
       const participantData = participantSnapshot.data();
       console.log(`Participant status is ${participantData["status"]}`);
 
       if (participantData["status"] === "Consented") {
         // Initialize some fields.
-        participantData["creation_date"] = Timestamp.now()
-        participantData["answered_questions"] = 0
-        participantData["answered_transcriptions"] = 0
-        participantData["number_questions"] = parseInt(participantData["number_questions"])
-        participantData["number_transcriptions"] = parseInt(participantData["number_transcriptions"])
-        participantData["used_prompts"] = []
-        participantData["transcribed_responses"] = []
+        participantData["creation_date"] = Timestamp.now();
+        participantData["answered_questions"] = 0;
+        participantData["answered_transcriptions"] = 0;
+        participantData["number_questions"] = parseInt(participantData["number_questions"]);
+        participantData["number_transcriptions"] = parseInt(participantData["number_transcriptions"]);
+        participantData["used_prompts"] = [];
+        participantData["transcribed_responses"] = [];
 
         // Send consent audio for first timers.
         console.log(`Sending consent message for participantData type: ${participantData["type"]}`);
@@ -88,9 +88,9 @@ exports.handler = async (context, event, callback) => {
     console.log("the end");
     return callback(null, event); //? what's the difference here with simply calling callback() ALSO why does it return "Response Type application/json; charset=utf-8" which throws a (non-fatal) twilio error every time?
   } catch (e) {
-    console.error(e);
+    console.error("The following error occured: ", e);
     await promptHelper.sendPrompt(context, participantPhone, varsHelper.getVar("error-message-audio"), false);
-    return callback(e)
+    return callback(e);
   }
 };
 
@@ -141,7 +141,7 @@ async function handlePromptResponse(context, body, mediaUrl, participantRef, par
 
     if (tooShort) {
       let tooShortAudio = varsHelper.getVar("voice-note-too-short-audio");
-      await promptHelper.sendPrompt(context, participantData['phone'], tooShortAudio, false);
+      await promptHelper.sendPrompt(context, participantData["phone"], tooShortAudio, false);
       return;
     }
   }
@@ -149,7 +149,7 @@ async function handlePromptResponse(context, body, mediaUrl, participantRef, par
   console.log(`Participant status now is: ${participantData["status"]}`);
   console.log("Saving changes to the participant document in the firestore.");
   await participantRef.update(participantData); //? may be redundant but better for data persistence I suppose ?
-  console.log("Successfully updated participant data in firestore\n"); 
+  console.log("Successfully updated participant data in firestore\n");
 
   if (participantData["status"] !== "Completed") {
     // Send next prompt.

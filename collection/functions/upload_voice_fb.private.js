@@ -48,17 +48,19 @@ exports.uploadVoice = async (promptId, mediaUrl, participantRef) => {
 
       let dlLink;
       try {
-        dlLink = await uploadedFile.getSignedUrl({
+        // This returns an array with the URL as its first and only element
+        urlArray = await uploadedFile.getSignedUrl({
           action: "read",
           expires: "2099-01-01", // Hardcoded, is there a better way to deal with this ?
-        })[0];
+        });
+        dlLink = urlArray[0]
       } catch (e) {
         console.error("Error getting the file download link");
         throw e;
       }
 
       try {
-        await firebaseHelper.addResponse(participantRef, promptId, dlLink, duration);
+        await firebaseHelper.addResponse(participantRef, promptId, dlLink, duration); 
         return false;
       } catch (e) {
         // Can't use a writeBatch for firestore and storage together, so we delete the stored file in case we coulnd't add the response document to firestore
@@ -67,7 +69,6 @@ exports.uploadVoice = async (promptId, mediaUrl, participantRef) => {
         throw e;
       }
     } catch (error) {
-      console.error("The following error occurred:", error);
       throw error;
     }
   }
