@@ -81,7 +81,7 @@ exports.getParticipantDocRef = async (participantId, isParticipantPhone) => {
         const docRef = querySnapshot.docs[0].ref;
         return docRef;
       } else if (querySnapshot.size === 0) {
-        throw new Error("Document not found with the specified phone number"); //TODO create new part
+        return partColRef.doc(); // Will return 'false' when trying docRef.exists, thus prompting user to register
       } else {
         throw new Error("Multiple documents found with the same phone number");
       }
