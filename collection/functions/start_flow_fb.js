@@ -1,6 +1,5 @@
 //? improve the vars file with the column names ? so that it's easier to maintain code, and it's default
 //NOTE: uploaded files are downloadable till 2099
-//TODO: adapt file documentation
 //TODO: Check callback positioning
   //TODO: (maybe related) how to detect errors on Twilio's side ? eg. the request is sent to Twilio but the user doesn't get the prompt
 //TODO: normalize strings (all uppers, all lowers, etc... ?)
@@ -12,7 +11,6 @@ const promptHelper = require(Runtime.getFunctions()["messaging/send_prompt"].pat
 const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
 const transcriptionHelper = require(Runtime.getFunctions()["transcription_fb"].path);
 const firebaseHelper = require(Runtime.getFunctions()["google_firebase_helper"].path);
-
 /**
  * Main entrypoint for Waxal workflow.
  * @param {object} context Contains Twilio client context.

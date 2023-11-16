@@ -1,1 +1,1 @@
-twilio-run --ngrok
+mocha --recursive --exit && twilio-run --ngrok
