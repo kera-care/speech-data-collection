@@ -75,7 +75,12 @@ exports.getParticipantDocRef = async (participantId, isParticipantPhone) => {
     if (!isParticipantPhone) {
       return partColRef.doc(participantId);
     } else {
-      const querySnapshot = await partColRef.where("phone", "==", participantId).get();
+      let querySnapshot = await partColRef.where("phone", "==", participantId).get();
+
+      // In case this is the first code run after the form submission which means the phone number still has the '+' sign.
+      if (querySnapshot.size === 0) {
+        querySnapshot = await partColRef.where("phone", "==", '+' + participantId).get();
+      }
 
       if (querySnapshot.size === 1) {
         const docRef = querySnapshot.docs[0].ref;

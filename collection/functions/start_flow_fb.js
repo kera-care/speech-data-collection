@@ -3,6 +3,7 @@
 //TODO: Check callback positioning
   //TODO: (maybe related) how to detect errors on Twilio's side ? eg. the request is sent to Twilio but the user doesn't get the prompt
 //TODO: normalize strings (all uppers, all lowers, etc... ?)
+//TODO: make it so default phone field starts with '+'
 
 const { DocumentReference, Timestamp } = require("firebase-admin/firestore");
 const { ParticipantData } = require("./typedefs.private");
@@ -39,6 +40,8 @@ exports.handler = async (context, event, callback) => {
       console.log(`Participant status is ${participantData["status"]}`);
 
       if (participantData["status"] === "Consented") {
+        // Removes '+' sign at the beginning of phone number
+        participantData['phone'] = participantData['phone'].slice(1)
         // Initialize some fields.
         participantData["creation_date"] = Timestamp.now();
         participantData["answered_questions"] = 0;
@@ -53,6 +56,7 @@ exports.handler = async (context, event, callback) => {
         if (participantData["type"] === "Transcriber") {
           let text = varsHelper.getVar("transcription-instructions");
           await promptHelper.sendPrompt(context, participantPhone, text, true);
+          //TODO: Add a small delay (~2s) so that the consent audio arrives before the 1/n text message
         } else {
           let audio = varsHelper.getVar("consent-audio");
           await promptHelper.sendPrompt(context, participantPhone, audio, false);
