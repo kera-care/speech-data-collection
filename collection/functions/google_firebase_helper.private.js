@@ -224,3 +224,15 @@ exports.addParticipant = async (name, phone, language, status, number_questions,
       console.error("Error adding participant:", error);
     });
 };
+
+exports.addPrompt = async (type, content) => {
+  promptColRef = this.getPromptsCollectionRef();
+  await promptColRef.add({
+    type: type,
+    content: content,
+  })
+  .then()
+  .catch((error) => {
+    console.error("Error adding prompts:", error);
+  });
+};
