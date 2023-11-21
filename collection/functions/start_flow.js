@@ -32,13 +32,22 @@ exports.handler = async (context, event, callback) => {
       console.log("Participant not registered");
       let audio = varsHelper.getVar("not-registered-audio");
       let consentForm = varsHelper.getVar("consent-form");
-      let consentText = `Please consider registering for the data collection by submitting a response to the following form : ${consentForm}`;
+      let consentText = `You didn't consent in taking part in this data collection, please re-submit here : ${consentForm}`;
       await promptHelper.sendPrompt(context, participantPhone, audio, false);
       await promptHelper.sendPrompt(context, participantPhone, consentText, true);
     } else {
       const participantData = participantSnapshot.data();
       console.log(`Participant status is ${participantData["status"]}`);
 
+      if (participantData["status"] === 'PLACEHOLDER VALUE FOR NO CONSENT') { //TODO
+        console.log("Participant did not consent in the form");
+        let audio = varsHelper.getVar("not-registered-audio");
+        let consentForm = varsHelper.getVar("consent-form");
+        let consentText = `Please consider registering for the data collection by submitting a response to the following form : ${consentForm}`;
+        await promptHelper.sendPrompt(context, participantPhone, audio, false);
+        await promptHelper.sendPrompt(context, participantPhone, consentText, true);
+      }
+      
       if (participantData["status"] === "Consented") {
         // Removes '+' sign at the beginning of phone number
         participantData['phone'] = participantData['phone'].slice(1)
