@@ -10,7 +10,7 @@ const { ParticipantData } = require("./typedefs.private");
 
 const promptHelper = require(Runtime.getFunctions()["messaging/send_prompt"].path);
 const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
-const transcriptionHelper = require(Runtime.getFunctions()["transcription_fb"].path);
+const transcriptionHelper = require(Runtime.getFunctions()["transcription"].path);
 const firebaseHelper = require(Runtime.getFunctions()["google_firebase_helper"].path);
 /**
  * Main entrypoint for Waxal workflow.
@@ -140,7 +140,7 @@ async function handlePromptResponse(context, body, mediaUrl, participantRef, par
     }
 
     const lastPromptId = participantData["used_prompts"][participantData["used_prompts"].length - 1];
-    const uploadHelper = require(Runtime.getFunctions()["upload_voice_fb"].path);
+    const uploadHelper = require(Runtime.getFunctions()["upload_voice"].path);
     tooShort = await uploadHelper.uploadVoice(lastPromptId, mediaUrl, participantRef);
 
     // Mark completed if this response is the final one, else mark ready.
@@ -176,7 +176,7 @@ async function handlePromptResponse(context, body, mediaUrl, participantRef, par
  * @returns {Promise<void>}
  */
 async function handleSendPrompt(context, participantData) {
-  const promptFetchHelper = require(Runtime.getFunctions()["prompt_fetch_fb"].path);
+  const promptFetchHelper = require(Runtime.getFunctions()["prompt_fetch"].path);
   const isTranscription = participantData["type"] === "Transcriber";
 
   try {

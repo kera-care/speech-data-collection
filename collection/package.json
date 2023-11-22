@@ -12,6 +12,7 @@
     "@google-cloud/service-usage": "^2.0.0",
     "@google-cloud/storage": "^6.1.0",
     "@twilio/runtime-handler": "1.2.3",
+    "csv-parser": "^3.0.0",
     "dotenv": "^16.0.1",
     "exponential-backoff": "^3.1.0",
     "firebase": "^10.4.0",
