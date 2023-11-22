@@ -1,11 +1,17 @@
 //TODO: Deal with the languages, currently they are defined in the project vars but also in the participant and response data. Normalize it all.
 const { credential } = require("firebase-admin");
 const { initializeApp } = require("firebase-admin/app");
-const { getFirestore, DocumentReference, CollectionReference, WriteBatch, Timestamp } = require("firebase-admin/firestore");
+const {
+  getFirestore,
+  DocumentReference,
+  CollectionReference,
+  WriteBatch,
+  Timestamp,
+} = require("firebase-admin/firestore");
 const { getStorage } = require("firebase-admin/storage");
-const { Bucket } = require("@google-cloud/storage")
+const { Bucket } = require("@google-cloud/storage");
 const serviceAccount = require("../assets/service_account_key.private.json");
-const { PromptData, ParticipantData, ResponseData, TranscriptionData } = require("./typedefs.private")
+const { PromptData, ParticipantData, ResponseData, TranscriptionData } = require("./typedefs.private");
 
 const app = initializeApp({
   credential: credential.cert(serviceAccount),
@@ -66,7 +72,7 @@ exports.getPromptsCollectionRef = () => {
 /**
  * Gets a `DocumentReference` instance that refers to the participant whose message is currently being handled. Asynchronous function if `isParticipantPhone` is set to `true`
  * @param {string} participantId The participant phone number if `isParticipantPhone` is true, the participant document ID otherwise
- * @param {boolean} isParticipantPhone `true` if `participantId` corresponds to the participant phone number, `false` if it's the document ID 
+ * @param {boolean} isParticipantPhone `true` if `participantId` corresponds to the participant phone number, `false` if it's the document ID
  * @returns {Promise<DocumentReference>} A promise with the `DocumentReference`instance.
  */
 exports.getParticipantDocRef = async (participantId, isParticipantPhone) => {
@@ -75,12 +81,8 @@ exports.getParticipantDocRef = async (participantId, isParticipantPhone) => {
     if (!isParticipantPhone) {
       return partColRef.doc(participantId);
     } else {
-      let querySnapshot = await partColRef.where("phone", "==", participantId).get();
-
-      // In case this is the first code run after the form submission which means the phone number still has the '+' sign.
-      if (querySnapshot.size === 0) {
-        querySnapshot = await partColRef.where("phone", "==", '+' + participantId).get();
-      }
+      const phoneNo = participantId.startsWith("+") ? participantId : "+" + participantId;
+      const querySnapshot = await partColRef.where("phone", "==", phoneNo).get();
 
       if (querySnapshot.size === 1) {
         const docRef = querySnapshot.docs[0].ref;
@@ -96,7 +98,7 @@ exports.getParticipantDocRef = async (participantId, isParticipantPhone) => {
   }
 };
 /**
- * Gets a `DocumentReference` instance that refers to the response with the provided ID. 
+ * Gets a `DocumentReference` instance that refers to the response with the provided ID.
  * @param {string} responseId The document ID of the response we want to retrieve.
  * @returns {DocumentReference} The `DocumentReference` instance.
  */
@@ -189,7 +191,7 @@ exports.addResponse = async (participantRef, promptId, dlLink, duration) => {
 
 //? Should a participant have several languages ? In case they can/want to answer in several languages. --> Would need careful implementation to know in what language the responses are
 //+ Currently not used.
-/** 
+/**
  * Creates and adds to the Firestore Database a new participant data.
  * @param {string} name Participant's name
  * @param {string} phone Participant's phone number with country code but without '+' sign.
@@ -227,12 +229,13 @@ exports.addParticipant = async (name, phone, language, status, number_questions,
 
 exports.addPrompt = async (type, content) => {
   promptColRef = this.getPromptsCollectionRef();
-  await promptColRef.add({
-    type: type,
-    content: content,
-  })
-  .then()
-  .catch((error) => {
-    console.error("Error adding prompts:", error);
-  });
+  await promptColRef
+    .add({
+      type: type,
+      content: content,
+    })
+    .then()
+    .catch((error) => {
+      console.error("Error adding prompts:", error);
+    });
 };

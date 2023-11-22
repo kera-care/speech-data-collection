@@ -31,7 +31,7 @@ const { Timestamp, DocumentReference } = require("firebase-admin/firestore");
  * @property {string} language
  * @property {DocumentReference} participant_path
  * @property {DocumentReference} prompt_path
- * @property {Timestamp} response_date  //TODO: change it to creation_date
+ * @property {Timestamp} creation_date 
  * @property {string} status
  * @property {string} storage_link
  * @property {object} transcription_counts ${language}<count, isFull>

@@ -49,8 +49,6 @@ exports.handler = async (context, event, callback) => {
       }
       
       if (participantData["status"] === "Consented") {
-        // Removes '+' sign at the beginning of phone number
-        participantData['phone'] = participantData['phone'].slice(1)
         // Initialize some fields.
         participantData["creation_date"] = Timestamp.now();
         participantData["answered_questions"] = 0;
