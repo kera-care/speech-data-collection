@@ -3,7 +3,6 @@
 //TODO: Check callback positioning
   //TODO: (maybe related) how to detect errors on Twilio's side ? eg. the request is sent to Twilio but the user doesn't get the prompt
 //TODO: normalize strings (all uppers, all lowers, etc... ?)
-//TODO: make it so default phone field starts with '+'
 
 const { DocumentReference, Timestamp } = require("firebase-admin/firestore");
 const { ParticipantData } = require("./typedefs.private");
@@ -32,24 +31,25 @@ exports.handler = async (context, event, callback) => {
       console.log("Participant not registered");
       let audio = varsHelper.getVar("not-registered-audio");
       let consentForm = varsHelper.getVar("consent-form");
-      let consentText = `You didn't consent in taking part in this data collection, please re-submit here : ${consentForm}`;
+      let consentText = `Please consider registering for the data collection by submitting a response to the following form : ${consentForm}`;
       await promptHelper.sendPrompt(context, participantPhone, audio, false);
       await promptHelper.sendPrompt(context, participantPhone, consentText, true);
     } else {
       const participantData = participantSnapshot.data();
       console.log(`Participant status is ${participantData["status"]}`);
 
-      if (participantData["status"] === 'PLACEHOLDER VALUE FOR NO CONSENT') { //TODO
+      if (participantData["status"] === 'No') {
         console.log("Participant did not consent in the form");
         let audio = varsHelper.getVar("not-registered-audio");
         let consentForm = varsHelper.getVar("consent-form");
-        let consentText = `Please consider registering for the data collection by submitting a response to the following form : ${consentForm}`;
+        let consentText = `You didn't consent in taking part in this data collection, please re-submit here if you still want to take part in the data collection : ${consentForm}`;
         await promptHelper.sendPrompt(context, participantPhone, audio, false);
         await promptHelper.sendPrompt(context, participantPhone, consentText, true);
       }
       
-      if (participantData["status"] === "Consented") {
+      if (participantData["status"] === "Yes, I consent") {
         // Initialize some fields.
+        participantData["status"] = "Consented"
         participantData["creation_date"] = Timestamp.now();
         participantData["answered_questions"] = 0;
         participantData["answered_transcriptions"] = 0;
@@ -92,6 +92,7 @@ exports.handler = async (context, event, callback) => {
       await participantRef.update(participantData);
       console.log("Successfully updated participant data in firestore");
     }
+    
     console.log("the end");
     return callback(null, event); //? what's the difference here with simply calling callback() ALSO why does it return "Response Type application/json; charset=utf-8" which throws a (non-fatal) twilio error every time?
   } catch (e) {
