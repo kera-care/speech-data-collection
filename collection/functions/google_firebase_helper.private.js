@@ -15,8 +15,8 @@ const { PromptData, ParticipantData, ResponseData, TranscriptionData } = require
 
 const app = initializeApp({
   credential: credential.cert(serviceAccount),
-  projectId: "waxal-kera",
-  storageBucket: "waxal-kera.appspot.com",
+  projectId: "waxal-speech-data",
+  storageBucket: "waxal-speech-data.appspot.com",
 });
 const db = getFirestore(app);
 const storage = getStorage(app);

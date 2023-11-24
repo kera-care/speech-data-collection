@@ -1,12 +1,49 @@
-# Testing files
-notebook1.ipynb
-notes.md
-list_health_questions.csv
-all_peopleAlsoAsk_question_v1.txt
-script.js
+# Twilio Serverless
+.twiliodeployinfo
 
-# VS code files
-.vscode
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# dotenv environment variable files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+# Serverless directories
+.serverless/
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# Private assets files
+assets/
 
 # MacOS files
 .DS_Store
+
+# Private misc files
+misc/
+
+# VS code files
+.vscode
