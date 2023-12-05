@@ -3,7 +3,6 @@ const { FieldPath, FieldValue, DocumentReference, Timestamp } = require("firebas
 const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
 const firebaseHelper = require(Runtime.getFunctions()["google_firebase_helper"].path);
 
-//? should transcriptions be stored like audio responses ? ie. at {responseID}/{partID} ?
 /**
  * Adds a new document to the transcription collection and updates the transcription count for the corresponding language in the response document.
  * @param {DocumentReference} participantRef `DocumentReference` for the transcriber.
@@ -50,7 +49,7 @@ exports.addTranscription = async (participantRef, responseId, text) => {
       })
       .update(respRef, {
         [`transcription_counts.${language}.count`]: FieldValue.increment(1),
-        [`transcription_counts.${language}.isFull`]: isFull,
+        [`transcription_counts.${language}.is_full`]: isFull,
       })
       .commit()
       .then()
@@ -85,7 +84,7 @@ exports.getNextPrompt = async (transcribedResponses, language) => {
     if (transcribedResponses.length === 0) {
       //Firestore doens't allow 'not-in' operations on empty arrays
       query = respColRef
-        .where(`transcription_counts.${language}.isFull`, "==", false) //TODO: change "isFull" to "is_full" for naming consistency
+        .where(`transcription_counts.${language}.is_full`, "==", false) //TODO: change "isFull" to "is_full" for naming consistency
         .orderBy(FieldPath.documentId(), "asc")
         .startAfter(dummyRespId)
         .limit(1);
@@ -93,7 +92,7 @@ exports.getNextPrompt = async (transcribedResponses, language) => {
 
       if (querySnapshot.empty) {
         query = respColRef
-          .where(`transcription_counts.${language}.isFull`, "==", false)
+          .where(`transcription_counts.${language}.is_full`, "==", false)
           .orderBy(FieldPath.documentId(), "asc")
           .endBefore(dummyRespId)
           .limitToLast(1);

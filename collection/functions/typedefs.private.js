@@ -25,6 +25,18 @@ const { Timestamp, DocumentReference } = require("firebase-admin/firestore");
  */
 
 /**
+ * Object containing data about a translation
+ * @typedef {object} TranslationData
+ * @property {number} duration
+ * @property {string} language
+ * @property {DocumentReference} participant_path
+ * @property {DocumentReference} prompt_path
+ * @property {Timestamp} creation_date 
+ * @property {string} status
+ * @property {string} storage_link
+ */
+
+/**
  * Object containing data about a response
  * @typedef {object} ResponseData
  * @property {number} duration
@@ -34,7 +46,7 @@ const { Timestamp, DocumentReference } = require("firebase-admin/firestore");
  * @property {Timestamp} creation_date 
  * @property {string} status
  * @property {string} storage_link
- * @property {object} transcription_counts ${language}<count, isFull>
+ * @property {object} translation_counts ${language}<count, isFull>
  */
 
 /**

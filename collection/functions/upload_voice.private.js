@@ -3,7 +3,7 @@ const path = require("path");
 const got = require("got");
 const mm = require("music-metadata");
 const fetch = require("node-fetch");
-const { finished } = require('node:stream/promises');
+const { finished } = require("node:stream/promises");
 
 const { DocumentReference } = require("firebase-admin/firestore");
 const { Bucket, File } = require("@google-cloud/storage");
@@ -12,7 +12,6 @@ const tmp_dir = require("os").tmpdir();
 const PUBLIC_DIR = `${tmp_dir}/mms_images`;
 
 const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
-const promptHelper = require(Runtime.getFunctions()["messaging/send_prompt"].path);
 const firebaseHelper = require(Runtime.getFunctions()["google_firebase_helper"].path);
 
 // Create a local directory for staging audio files.
@@ -23,12 +22,13 @@ if (!fs.existsSync(PUBLIC_DIR)) {
 /**
  * Uploads audio file for voice note to Firebase Storage and adds the response to Firestore.
  * @param {*} context Twilio client context.
- * @param {string} promptId ID of the prompt being responded to.
+ * @param {string} promptId ID of the prompt or response being responded to.
  * @param {string} mediaUrl URL (twilio side) of the audio sent by the user.
  * @param {DocumentReference} participantRef `DocumentReference` for the participant
+ * @param {string} participantType participant type (Reader, Translater, Transcriber, Controller)
  * @returns {boolean} Whether the voice note length is too short, in which case we can't proceed.
  */
-exports.uploadVoice = async (promptId, mediaUrl, participantRef) => {
+exports.uploadVoice = async (promptId, mediaUrl, participantRef, participantType) => {
   const stream = got.stream(mediaUrl);
   let duration = await extractDuration(stream);
   let minLength = parseInt(varsHelper.getVar("min-audio-length-secs"));
@@ -42,7 +42,7 @@ exports.uploadVoice = async (promptId, mediaUrl, participantRef) => {
       const bucket = firebaseHelper.getStorageBucket();
 
       try {
-        var uploadedFile = await uploadToDirectory(promptId, participantRef.id, mediaUrl, bucket);
+        var uploadedFile = await uploadToDirectory(promptId, participantRef.id, mediaUrl, bucket, participantType);
       } catch (error) {
         console.error("Error uploading file to storage");
         throw error;
@@ -55,14 +55,14 @@ exports.uploadVoice = async (promptId, mediaUrl, participantRef) => {
           action: "read",
           expires: "2099-01-01", // Hardcoded, is there a better way to deal with this ?
         });
-        dlLink = urlArray[0]
+        dlLink = urlArray[0];
       } catch (e) {
         console.error("Error getting the file download link");
         throw e;
       }
 
       try {
-        await firebaseHelper.addResponse(participantRef, promptId, dlLink, duration); 
+        await firebaseHelper.addResponse(participantRef, promptId, dlLink, duration, participantType);
         return false;
       } catch (e) {
         // Can't use a writeBatch for firestore and storage together, so we delete the stored file in case we coulnd't add the response document to firestore
@@ -78,22 +78,24 @@ exports.uploadVoice = async (promptId, mediaUrl, participantRef) => {
 
 /**
  * Uploads to the correct directory in the storage bucket.
- * @param {string} promptId ID of the prompt being responded to.
+ * @param {string} promptId ID of the prompt or response being responded to.
  * @param {string} participantId ID of the responding participant.
  * @param {string} mediaUrl URL of the audio file containing the response.
  * @param {Bucket} bucket GCP storage bucket being saved to.
+ * @param {string} participantType participant type (Reader, Translater, Transcriber, Controller)
  * @returns {File} The uploaded google-cloud storage File object.
  */
-async function uploadToDirectory(promptId, participantId, mediaUrl, bucket) {
+async function uploadToDirectory(promptId, participantId, mediaUrl, bucket, participantType) {
   console.log("Uploading response audio");
   const fullPath = path.resolve(`${PUBLIC_DIR}/${participantId}`);
   const fileStream = fs.createWriteStream(fullPath);
-  const destinationPath = "responses/" + promptId + "/" + participantId + ".ogg";
+  const directory = (participantType === "Reader") ? "responses/" : "translations/";
+  const destinationPath = directory + promptId + "/" + participantId + ".ogg";
 
   // First write to a local file because uploading directly to storage from URL is not supported.
   const response = await fetch(mediaUrl);
   response.body.pipe(fileStream);
-  await finished(fileStream)
+  await finished(fileStream);
 
   // Upload to storage bucketat responses/{promptId}/{participantId}.
   try {

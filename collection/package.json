@@ -27,9 +27,9 @@
     "uuid": "^3.4.0"
   },
   "devDependencies": {
-    "twilio-run": "^3.4.2"
+    "twilio-run": "^3.5.3"
   },
   "engines": {
-    "node": "14"
+    "node": ">=14"
   }
 }

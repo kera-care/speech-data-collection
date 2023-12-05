@@ -3,6 +3,9 @@
 //TODO: Check callback positioning
   //TODO: (maybe related) how to detect errors on Twilio's side ? eg. the request is sent to Twilio but the user doesn't get the prompt
 //TODO: normalize strings (all uppers, all lowers, etc... ?)
+//? Idea: store responses with ID "promptID_partID", translations with "promptID_partID_random", transcriptions with "promptID_partID_random_random" ?
+//TODO: rework language
+//TODO: move addTranscription/Translation to firebase helper
 
 const { DocumentReference, Timestamp } = require("firebase-admin/firestore");
 const { ParticipantData } = require("./typedefs.private");
@@ -51,22 +54,28 @@ exports.handler = async (context, event, callback) => {
         // Initialize some fields.
         participantData["status"] = "Consented"
         participantData["creation_date"] = Timestamp.now();
-        participantData["answered_questions"] = 0;
-        participantData["answered_transcriptions"] = 0;
-        participantData["number_questions"] = parseInt(participantData["number_questions"]);
-        participantData["number_transcriptions"] = parseInt(participantData["number_transcriptions"]);
-        participantData["used_prompts"] = [];
-        participantData["transcribed_responses"] = [];
+        participantData["read_texts"] = 0;
+        participantData["translated_audios"] = 0;
+        participantData["transcribed_audios"] = 0;
+        participantData["nb_texts_to_read"] = parseInt(participantData["nb_texts_to_read"]);
+        participantData["nb_audios_to_translate"] = parseInt(participantData["nb_audios_to_translate"]);
+        participantData["nb_audios_to_transcribe"] = parseInt(participantData["nb_audios_to_transcribe"]);
+        participantData["read_texts"] = [];
+        participantData["translated_audios"] = [];
+        participantData["transcribed_audios"] = [];
 
-        // Send consent audio for first timers.
+        //Send consent audio for first timers.
         console.log(`Sending consent message for participantData type: ${participantData["type"]}`);
-        if (participantData["type"] === "Transcriber") {
+        if (participantData["type"] === "Reader") {
+          let audio = varsHelper.getVar("reading-instructions");
+          await promptHelper.sendPrompt(context, participantPhone, audio, false);
+        } else if (participantData["type"] === "Translater") {
+          
+        } else if (participantData["type"] === "Transcriber") {
           let text = varsHelper.getVar("transcription-instructions");
           await promptHelper.sendPrompt(context, participantPhone, text, true);
-          //TODO: Add a small delay (~2s) so that the consent audio arrives before the 1/n text message
-        } else {
-          let audio = varsHelper.getVar("consent-audio");
-          await promptHelper.sendPrompt(context, participantPhone, audio, false);
+        } else if (participantData["type"] === "Controller") {
+
         }
       }
 
@@ -94,7 +103,7 @@ exports.handler = async (context, event, callback) => {
     }
     
     console.log("the end");
-    return callback(null, event); //? what's the difference here with simply calling callback() ALSO why does it return "Response Type application/json; charset=utf-8" which throws a (non-fatal) twilio error every time?
+    return callback(null, event);
   } catch (e) {
     console.error("The following error occured: ", e);
     await promptHelper.sendPrompt(context, participantPhone, varsHelper.getVar("error-message-audio"), false);
@@ -112,7 +121,53 @@ exports.handler = async (context, event, callback) => {
  * @returns {Promise<void>}
  */
 async function handlePromptResponse(context, body, mediaUrl, participantRef, participantData) {
-  if (participantData["type"] === "Transcriber") {
+  if (participantData["type"] === "Reader") { //TODO add "Reader" depedencies
+    // Notify the user if they send a message that doesn't contain audio.
+    if (!mediaUrl) {
+      let audio = varsHelper.getVar("voice-note-required-audio");
+      console.log("User did not include voice note");
+      await promptHelper.sendPrompt(context, participantData["phone"], audio, false);
+      return;
+    }
+
+    const lastPromptId = participantData["read_texts"][participantData["read_texts"].length - 1];
+    const uploadHelper = require(Runtime.getFunctions()["upload_voice"].path);
+    tooShort = await uploadHelper.uploadVoice(lastPromptId, mediaUrl, participantRef, participantData["type"]);
+
+    // Mark completed if this response is the final one, else mark ready.
+    participantData["read_texts"] += 1;
+    participantData["status"] =
+      participantData["read_texts"] >= participantData["nb_texts_to_read"] ? "Completed" : "Ready";
+
+    if (tooShort) {
+      let tooShortAudio = varsHelper.getVar("voice-note-too-short-audio");
+      await promptHelper.sendPrompt(context, participantData["phone"], tooShortAudio, false);
+      return;
+    }
+  } else if (participantData["type"] === "Translater") {
+    if (!mediaUrl) {
+      let audio = varsHelper.getVar("voice-note-required-audio");
+      console.log("User did not include voice note");
+      await promptHelper.sendPrompt(context, participantData["phone"], audio, false);
+      return;
+    }
+
+    const lastAudioId = participantData["used_audios"][participantData["used_audios"].length - 1];
+    const uploadHelper = require(Runtime.getFunctions()["upload_voice"].path);
+    tooShort = await uploadHelper.uploadVoice(lastAudioId, mediaUrl, participantRef, participantData["type"]);
+
+    // Mark completed if this response is the final one, else mark ready.
+    participantData["translated_audios"] += 1;
+    participantData["status"] =
+      participantData["translated_audios"] >= participantData["nb_audios_to_translate"] ? "Completed" : "Ready";
+
+    if (tooShort) {
+      let tooShortAudio = varsHelper.getVar("voice-note-too-short-audio");
+      await promptHelper.sendPrompt(context, participantData["phone"], tooShortAudio, false);
+      return;
+    }
+
+  } else if (participantData["type"] === "Transcriber") {
     // Notify the user if they send a message that doesn't contain text.
     if (!body) {
       const msg = varsHelper.getVar("transcription-instructions");
@@ -122,36 +177,15 @@ async function handlePromptResponse(context, body, mediaUrl, participantRef, par
     }
 
     const lastRespTranscribedId =
-      participantData["transcribed_responses"][participantData["transcribed_responses"].length - 1];
+      participantData["transcribed_audios"][participantData["transcribed_audios"].length - 1];
     await transcriptionHelper.addTranscription(participantRef, lastRespTranscribedId, body);
 
     // Mark completed if this response is the final one, else mark ready.
-    participantData["answered_transcriptions"] += 1;
+    participantData["transcribed_audios"] += 1;
     participantData["status"] =
-      participantData["answered_transcriptions"] >= participantData["number_transcriptions"] ? "Completed" : "Ready";
-  } else {
-    // Notify the user if they send a message that doesn't contain audio.
-    if (!mediaUrl) {
-      let audio = varsHelper.getVar("voice-note-required-audio");
-      console.log("User did not include voice note");
-      await promptHelper.sendPrompt(context, participantData["phone"], audio, false);
-      return;
-    }
-
-    const lastPromptId = participantData["used_prompts"][participantData["used_prompts"].length - 1];
-    const uploadHelper = require(Runtime.getFunctions()["upload_voice"].path);
-    tooShort = await uploadHelper.uploadVoice(lastPromptId, mediaUrl, participantRef);
-
-    // Mark completed if this response is the final one, else mark ready.
-    participantData["answered_questions"] += 1;
-    participantData["status"] =
-      participantData["answered_questions"] >= participantData["number_questions"] ? "Completed" : "Ready";
-
-    if (tooShort) {
-      let tooShortAudio = varsHelper.getVar("voice-note-too-short-audio");
-      await promptHelper.sendPrompt(context, participantData["phone"], tooShortAudio, false);
-      return;
-    }
+      participantData["transcribed_audios"] >= participantData["nb_audios_to_transcribe"] ? "Completed" : "Ready";
+  } else if (participantData["type"] === "Controller") {
+    //TODO
   }
 
   console.log(`Participant status now is: ${participantData["status"]}`);
@@ -180,8 +214,8 @@ async function handleSendPrompt(context, participantData) {
 
   try {
     var fetchedPrompt = isTranscription
-      ? await transcriptionHelper.getNextPrompt(participantData["transcribed_responses"], participantData["language"])
-      : await promptFetchHelper.getNextPrompt(participantData["used_prompts"]);
+      ? await transcriptionHelper.getNextPrompt(participantData["transcribed_audios"], participantData["language"])
+      : await promptFetchHelper.getNextPrompt(participantData["read_texts"]);
   } catch (e) {
     if (e.message === "NoMorePromptError") {
       return;
@@ -191,8 +225,8 @@ async function handleSendPrompt(context, participantData) {
   }
 
   const positionString = isTranscription
-    ? `${fetchedPrompt["position"]}/${participantData["number_transcriptions"]}`
-    : `${fetchedPrompt["position"]}/${participantData["number_questions"]}`;
+    ? `${fetchedPrompt["position"]}/${participantData["nb_audios_to_transcribe"]}`
+    : `${fetchedPrompt["position"]}/${participantData["nb_texts_to_read"]}`;
 
   console.log(`Sending ${fetchedPrompt["type"]} prompt ${fetchedPrompt["id"]}`);
   await promptHelper.sendPrompt(context, participantData["phone"], positionString, true);
@@ -204,7 +238,7 @@ async function handleSendPrompt(context, participantData) {
   );
 
   // Add the prompt/response ID to the used array in participant data.
-  const usedIDsArrayName = isTranscription ? "transcribed_responses" : "used_prompts";
+  const usedIDsArrayName = isTranscription ? "transcribed_audios" : "read_texts";
   participantData[usedIDsArrayName].push(fetchedPrompt["id"]);
   participantData["status"] = "Prompted";
 

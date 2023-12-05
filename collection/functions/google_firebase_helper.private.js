@@ -46,24 +46,36 @@ exports.getResponsesCollectionRef = () => {
 };
 
 /**
- * Gets a `CollectionReference` instance that refers to the transcription collection.
- * @returns {CollectionReference<TranscriptionData>} The `CollectionReference` instance.
- */
-exports.getTranscriptionsCollectionRef = () => {
-  try {
-    return db.collection("transcriptions");
-  } catch (error) {
-    throw error;
-  }
-};
-
-/**
  * Gets a `CollectionReference` instance that refers to the prompt collection.
  * @returns {CollectionReference<PromptData>} The `CollectionReference` instance.
  */
 exports.getPromptsCollectionRef = () => {
   try {
     return db.collection("prompts");
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Gets a `CollectionReference` instance that refers to the translation collection.
+ * @returns {CollectionReference<TranslationData>} The `CollectionReference` instance.
+ */
+exports.getTranslationsCollectionRef = () => {
+  try {
+    return db.collection("translations");
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Gets a `CollectionReference` instance that refers to the transcription collection.
+ * @returns {CollectionReference<TranscriptionData>} The `CollectionReference` instance.
+ */
+exports.getTranscriptionsCollectionRef = () => {
+  try {
+    return db.collection("transcriptions");
   } catch (error) {
     throw error;
   }
@@ -152,7 +164,7 @@ exports.updateParticipantAfterResponse = async (participantRef, participantData)
     });
 };
 
-/**
+/** //TODO: Max response count
  * Creates and adds to the Firestore Database data about the response.
  * @param {DocumentReference} participantRef `DocumentReference` of the participant who gave this response.
  * @param {string} promptId Document ID of the prompt corresponding to the response.
@@ -191,6 +203,7 @@ exports.addResponse = async (participantRef, promptId, dlLink, duration) => {
 
 //? Should a participant have several languages ? In case they can/want to answer in several languages. --> Would need careful implementation to know in what language the responses are
 //+ Currently not used.
+//! Deprecated
 /**
  * Creates and adds to the Firestore Database a new participant data.
  * @param {string} name Participant's name
@@ -238,4 +251,130 @@ exports.addPrompt = async (type, content) => {
     .catch((error) => {
       console.error("Error adding prompts:", error);
     });
+};
+
+
+//TODO Check these 2
+/**
+ * Adds a new document to the transcription collection and updates the transcription count for the corresponding language in the response document.
+ * @param {DocumentReference} participantRef `DocumentReference` for the transcriber.
+ * @param {string} responseId ID of the transcribed response.
+ * @param {string} text Full transcription of the voice note response.
+ * @return {Promise<void>}
+ */
+exports.addTranscription = async (participantRef, responseId, text) => {
+  try {
+    const transcriptionsCol = firebaseHelper.getTranscriptionsCollectionRef();
+    const responsesCol = firebaseHelper.getResponsesCollectionRef();
+    const maxTranscriptions = parseInt(varsHelper.getVar("transcriptions-per-response"));
+    const language = varsHelper.getVar("transcription-language"); //TODO: language overhaul
+    const writeBatch = firebaseHelper.getWriteBatch();
+
+    const respRef = responsesCol.doc(responseId);
+    const transacRef = transcriptionsCol.doc();
+
+    console.log("Adding transcription '", transacRef.id, "' to document to write batch");
+    console.log("Adding response '", respRef.id, "' document update to write batch");
+
+    // We verify if adding this transcription makes the transcription count reach the max amount of transcription set per response per language
+    const isFullPromise = respRef
+      .get()
+      .then((respSnapshot) => {
+        count = respSnapshot.get(`transcription_counts.${language}.count`);
+        return count + 1 >= maxTranscriptions;
+      })
+      .catch((e) => {
+        console.log("Error while reading transcription count");
+        throw e;
+      });
+    const isFull = await isFullPromise;
+
+    // We want either both or none of the actions to be performed so we use a writeBatch
+    await writeBatch
+      .set(transacRef, {
+        creation_date: Timestamp.now(),
+        participant_path: participantRef,
+        target_language: language,
+        text: text,
+        status: "New",
+        response_path: await responsesCol.doc(responseId),
+      })
+      .update(respRef, {
+        [`transcription_counts.${language}.count`]: FieldValue.increment(1),
+        [`transcription_counts.${language}.is_full`]: isFull,
+      })
+      .commit()
+      .then()
+      .catch((e) => {
+        console.log("Error committing the write batch");
+        throw e;
+      });
+
+    console.log("Write batch successfully committed");
+  } catch (error) {
+    console.error("The following error occurred:", error);
+    throw error;
+  }
+};
+
+/**
+ * Adds a new document to the trasnlation collection and updates the translation count for the corresponding language in the response document.
+ * @param {DocumentReference} participantRef `DocumentReference` for the translater.
+ * @param {string} responseId ID of the translated response.
+ * @param {string} text Full transcription of the voice note response.
+ * @return {Promise<void>}
+ */
+exports.addTranslation = async (participantRef, responseId, text) => {
+  try {
+    const transcriptionsCol = firebaseHelper.getTranscriptionsCollectionRef();
+    const responsesCol = firebaseHelper.getResponsesCollectionRef();
+    const maxTranscriptions = parseInt(varsHelper.getVar("transcriptions-per-response"));
+    const language = varsHelper.getVar("transcription-language"); //TODO: language overhaul
+    const writeBatch = firebaseHelper.getWriteBatch();
+
+    const respRef = responsesCol.doc(responseId);
+    const transacRef = transcriptionsCol.doc();
+
+    console.log("Adding transcription '", transacRef.id, "' to document to write batch");
+    console.log("Adding response '", respRef.id, "' document update to write batch");
+
+    // We verify if adding this transcription makes the transcription count reach the max amount of transcription set per response per language
+    const isFullPromise = respRef
+      .get()
+      .then((respSnapshot) => {
+        count = respSnapshot.get(`transcription_counts.${language}.count`);
+        return count + 1 >= maxTranscriptions;
+      })
+      .catch((e) => {
+        console.log("Error while reading transcription count");
+        throw e;
+      });
+    const isFull = await isFullPromise;
+
+    // We want either both or none of the actions to be performed so we use a writeBatch
+    await writeBatch
+      .set(transacRef, {
+        creation_date: Timestamp.now(),
+        participant_path: participantRef,
+        target_language: language,
+        text: text,
+        status: "New",
+        response_path: await responsesCol.doc(responseId),
+      })
+      .update(respRef, {
+        [`transcription_counts.${language}.count`]: FieldValue.increment(1),
+        [`transcription_counts.${language}.is_full`]: isFull,
+      })
+      .commit()
+      .then()
+      .catch((e) => {
+        console.log("Error committing the write batch");
+        throw e;
+      });
+
+    console.log("Write batch successfully committed");
+  } catch (error) {
+    console.error("The following error occurred:", error);
+    throw error;
+  }
 };
