@@ -3,6 +3,8 @@ const path = require("path");
 const got = require("got");
 const mm = require("music-metadata");
 const fetch = require("node-fetch");
+const { finished } = require('node:stream/promises');
+
 const { DocumentReference } = require("firebase-admin/firestore");
 const { Bucket, File } = require("@google-cloud/storage");
 
@@ -91,6 +93,7 @@ async function uploadToDirectory(promptId, participantId, mediaUrl, bucket) {
   // First write to a local file because uploading directly to storage from URL is not supported.
   const response = await fetch(mediaUrl);
   response.body.pipe(fileStream);
+  await finished(fileStream)
 
   // Upload to storage bucketat responses/{promptId}/{participantId}.
   try {

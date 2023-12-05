@@ -44,6 +44,8 @@ assets/
 
 # Private misc files
 misc/
+request.json
+test.sh
 
 # VS code files
 .vscode
