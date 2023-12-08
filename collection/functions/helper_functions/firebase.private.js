@@ -18,6 +18,7 @@ const app = initializeApp({
   projectId: "waxal-speech-data",
   storageBucket: "waxal-speech-data.appspot.com",
 });
+
 const db = getFirestore(app);
 const storage = getStorage(app);
 
@@ -161,7 +162,7 @@ exports.updateParticipantAfterResponse = async (participantRef, participantData)
  * @returns {Promise<Void>}
  */
 exports.addResponse = async (participantRef, promptId, dlLink, duration) => {
-  const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
+  const varsHelper = require("./vars_helper.private");
   console.log("Adding response to firestore collection");
   const responsesCol = this.getResponsesCollectionRef();
   const promptCol = this.getPromptsCollectionRef();

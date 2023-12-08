@@ -1,7 +1,7 @@
 //NOTE: for queries, always create the query first (into some variable) and then get it
 const { FieldPath, FieldValue, DocumentReference, Timestamp } = require("firebase-admin/firestore");
-const varsHelper = require(Runtime.getFunctions()["vars_helper"].path);
-const firebaseHelper = require(Runtime.getFunctions()["google_firebase_helper"].path);
+const varsHelper = require("./vars_helper.private");
+const firebaseHelper = require("./firebase.private");
 
 //? should transcriptions be stored like audio responses ? ie. at {responseID}/{partID} ?
 /**

@@ -1,4 +1,5 @@
 const fs = require("fs");
+const path = require("path");
 
 /**
  * Fetches variable values from {@link assets/vars.private.json}
@@ -6,7 +7,8 @@ const fs = require("fs");
  * @return {string} Value of the requested variable.
  */
 exports.getVar = (varName) => {
-  return JSON.parse(fs.readFileSync(Runtime.getAssets()["/vars.json"].path).toString())[varName];
+  const filePath = path.resolve(__dirname, '../assets/vars.private.json');
+  return JSON.parse(fs.readFileSync(filePath).toString())[varName];
 };
 
 /**
