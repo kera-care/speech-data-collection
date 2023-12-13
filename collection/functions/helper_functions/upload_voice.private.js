@@ -1,9 +1,7 @@
 const fs = require("fs");
 const path = require("path");
-const got = require("got");
 const mm = require("music-metadata");
-const fetch = require("node-fetch");
-const { finished } = require("node:stream/promises");
+const { get } = require("axios");
 
 const { DocumentReference } = require("firebase-admin/firestore");
 const { Bucket, File } = require("@google-cloud/storage");
@@ -30,113 +28,76 @@ if (!fs.existsSync(PUBLIC_DIR)) {
  */
 exports.uploadVoice = async (promptId, mediaUrl, participantRef) => {
   const minLength = parseInt(varsHelper.getVar("min-audio-length-secs"));
-  const filePath = path.resolve(`${PUBLIC_DIR}/${participantRef.id}/${promptId}.ogg`);
-  const stream = fs.createWriteStream(path.resolve(filePath));
   let tooShort = false;
-  get(mediaUrl, {
-    responseType: "stream", // Set responseType to 'stream' to handle binary data
-    headers: {
-      Authorization: `Bearer ${verify_token}`,
-    },
-  })
-    .then(async (response) => {
-      console.log("Tryna write the stream now");
-      // Pipe the response stream to a file
-      audioStream = response.data;
-      let duration = await extractDuration(audioStream);
+  const accessToken = process.env.SYSTEM_ADMIN_TOKEN;
 
-      // Notify the user if the message duration is too short.
-      if (duration < minLength) {
-        tooShort = true;
-      } else {
-        audioStream.pipe(stream);
-        await finished(stream);
-        console.log("streaming is done; closing it");
-        stream.close();
-        console.log("Should be good now");
+  try {
+    const response = await get(mediaUrl, {
+      responseType: "arraybuffer", // Set responseType to 'stream' to handle binary data
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    let duration = await extractDuration(response.data);
+
+    // Notify the user if the message duration is too short.
+    if (duration < minLength) {
+      tooShort = true;
+    } else {
+      try {
+        console.log("Uploading voice note to bucket.")
+        const fileBuffer = Buffer.from(response.data, "binary");
+        const bucket = firebaseHelper.getStorageBucket();
+        const uploadedFile = bucket.file("responses/" + promptId + "/" + participantRef.id + ".ogg");
+        //? add gzip & max-age options somewhere around here? "gzip: true, metadata: {cacheControl: "public, max-age=31536000"},"
+        uploadedFile.save(fileBuffer, {
+          contentType: response.headers["content-type"], // Set the content-type based on the response headers
+        });
+
+        let dlLink;
+        try {
+          // This returns an array with the URL as its first and only element
+          urlArray = await uploadedFile.getSignedUrl({
+            action: "read",
+            expires: "2099-01-01", // Hardcoded, is there a better way to deal with this ?
+          });
+          dlLink = urlArray[0];
+        } catch (e) {
+          console.error("Error getting the file download link");
+          throw e;
+        }
 
         try {
-          console.log("Adding response: Uploading to storage");
-          const bucket = firebaseHelper.getStorageBucket();
-
-          try {
-            var uploadedFile = await uploadToRemoteDirectory(promptId, participantRef.id, filePath, bucket);
-          } catch (error) {
-            console.error("Error uploading file to storage");
-            throw error;
-          }
-
-          let dlLink;
-          try {
-            // This returns an array with the URL as its first and only element
-            urlArray = await uploadedFile.getSignedUrl({
-              action: "read",
-              expires: "2099-01-01", // Hardcoded, is there a better way to deal with this ?
-            });
-            dlLink = urlArray[0];
-          } catch (e) {
-            console.error("Error getting the file download link");
-            throw e;
-          }
-
-          try {
-            await firebaseHelper.addResponse(participantRef, promptId, dlLink, duration);
-            return false;
-          } catch (e) {
-            // Can't use a writeBatch for firestore and storage together, so we delete the stored file in case we coulnd't add the response document to firestore
-            console.error("Error adding new response. The uploaded audio will be deleted.");
-            await uploadedFile.delete();
-            throw e;
-          }
-        } catch (error) {
-          throw error;
+          await firebaseHelper.addResponse(participantRef, promptId, dlLink, duration);
+          return false;
+        } catch (e) {
+          // Can't use a writeBatch for firestore and storage together, so we delete the stored file in case we coulnd't add the response document to firestore
+          console.error("Error adding new response. The uploaded audio will be deleted.");
+          await uploadedFile.delete();
+          throw e;
         }
+      } catch (error) {
+        throw error;
       }
-    })
-    .catch((error) => {
-      console.error("Error 1:", error);
-    });
+    }
+  } catch (error) {
+    console.error("Error 1:", error);
+  }
 };
 
 /**
- * Uploads to the correct directory in the storage bucket.
- * @param {string} promptId ID of the prompt being responded to.
- * @param {string} participantId ID of the responding participant.
- * @param {string} mediaUrl URL of the audio file containing the response.
- * @param {Bucket} bucket GCP storage bucket being saved to.
- * @returns {File} The uploaded google-cloud storage File object.
+ * Extracts duration from an audio array buffer.
+ * @param {*} buffer audio array buffer.
+ * @returns audio file length in seconds.
  */
-async function uploadToRemoteDirectory(promptId, participantId, filePath, bucket) {
-  console.log("Uploading response audio");
-  const destinationPath = "responses/" + promptId + "/" + participantId + ".ogg";
-
-  // Upload to storage bucketat responses/{promptId}/{participantId}.
-  try {
-    uploadRep = await bucket.upload(filePath, {
-      destination: destinationPath,
-      gzip: true,
-      metadata: {
-        cacheControl: "public, max-age=31536000",
-      },
-    });
-    return uploadRep[0];
-  } catch (e) {
-    throw e;
-  }
-}
-
-/**
- * Extracts duration from an audio stream.
- * @param {*} stream audio stream.
- * @returns Stream length in seconds.
- */
-async function extractDuration(stream) {
+async function extractDuration(buffer) {
   let duration = 0;
   try {
-    const metadata = await mm.parseStream(stream);
+    const metadata = await mm.parseBuffer(buffer);
     duration = metadata.format.duration;
   } catch (err) {
-    console.error(err);
+    console.error("extract duration error:", err);
   }
   return duration;
 }
