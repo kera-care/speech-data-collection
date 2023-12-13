@@ -84,7 +84,7 @@ exports.formSubmitted = onDocumentCreated("participants/{userID}", (event) => {
         console.error("Error:", error.response.data);
       });
   }
-});
+}); 
 
 
 exports.workflow = onRequest(async (req, res) => {
